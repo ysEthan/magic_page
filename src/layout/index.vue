@@ -22,8 +22,10 @@
               <el-icon><Goods /></el-icon>
               <span>商品管理</span>
             </template>
-            <el-menu-item index="/products/list">商品列表</el-menu-item>
-            <el-menu-item index="/products/category">商品分类</el-menu-item>
+            <el-menu-item index="/product/brand">品牌管理</el-menu-item>
+            <el-menu-item index="/product/category">分类管理</el-menu-item>
+            <el-menu-item index="/product/spu">SPU管理</el-menu-item>
+            <el-menu-item index="/product/sku">SKU管理</el-menu-item>
           </el-sub-menu>
           <el-sub-menu index="2">
             <template #title>
@@ -128,8 +130,15 @@ const handleCommand = (command) => {
 
 <style lang="scss" scoped>
 .common-layout {
-  width: 1200px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
   height: 100vh;
+  display: flex;
+  flex-direction: column;
   
   .el-container {
     height: 100%;

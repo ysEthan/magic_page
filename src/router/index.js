@@ -27,6 +27,38 @@ const router = createRouter({
           meta: { title: '首页', icon: 'dashboard' }
         },
         {
+          path: '/product',
+          name: 'Product',
+          redirect: '/product/brand',
+          meta: { title: '商品管理' },
+          children: [
+            {
+              path: 'brand',
+              name: 'Brand',
+              component: () => import('@/views/product/brand.vue'),
+              meta: { title: '品牌管理' }
+            },
+            {
+              path: 'category',
+              name: 'Category',
+              component: () => import('@/views/product/category.vue'),
+              meta: { title: '分类管理' }
+            },
+            {
+              path: 'spu',
+              name: 'SPU',
+              component: () => import('@/views/product/spu.vue'),
+              meta: { title: 'SPU管理' }
+            },
+            {
+              path: 'sku',
+              name: 'SKU',
+              component: () => import('@/views/product/sku.vue'),
+              meta: { title: 'SKU管理' }
+            }
+          ]
+        },
+        {
           path: 'profile',
           name: 'Profile',
           component: () => import('@/views/profile/index.vue'),

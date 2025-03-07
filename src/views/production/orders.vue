@@ -9,40 +9,80 @@
       </template>
 
       <!-- 搜索区域 -->
-      <el-form :inline="true" :model="queryParams" class="search-form">
+      <el-form :inline="true" :model="queryParams" class="search-form" size="default">
         <el-form-item label="任务编号">
           <el-input
             v-model="queryParams.search"
             placeholder="请输入任务编号"
             clearable
+            style="width: 200px"
             @keyup.enter="handleQuery"
           />
         </el-form-item>
         <el-form-item label="任务类型">
-          <el-select v-model="queryParams.order_type" placeholder="请选择类型" clearable>
-            <el-option label="试产" value="trial" />
-            <el-option label="量产" value="mass" />
+          <el-select 
+            v-model="queryParams.order_type" 
+            placeholder="请选择类型" 
+            clearable
+            style="width: 120px"
+          >
+            <el-option label="试产" value="trial">
+              <el-tag size="small" type="warning">试产</el-tag>
+            </el-option>
+            <el-option label="量产" value="mass">
+              <el-tag size="small" type="success">量产</el-tag>
+            </el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="优先级">
-          <el-select v-model="queryParams.priority" placeholder="请选择优先级" clearable>
-            <el-option label="紧急" :value="0" />
-            <el-option label="高" :value="1" />
-            <el-option label="中" :value="2" />
-            <el-option label="低" :value="3" />
+          <el-select 
+            v-model="queryParams.priority" 
+            placeholder="请选择优先级" 
+            clearable
+            style="width: 120px"
+          >
+            <el-option label="紧急" :value="0">
+              <el-tag size="small" type="danger">紧急</el-tag>
+            </el-option>
+            <el-option label="高" :value="1">
+              <el-tag size="small" type="warning">高</el-tag>
+            </el-option>
+            <el-option label="中" :value="2">
+              <el-tag size="small" type="primary">中</el-tag>
+            </el-option>
+            <el-option label="低" :value="3">
+              <el-tag size="small" type="info">低</el-tag>
+            </el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="queryParams.status" placeholder="请选择状态" clearable>
-            <el-option label="待处理" value="pending" />
-            <el-option label="进行中" value="in_progress" />
-            <el-option label="已完成" value="completed" />
-            <el-option label="已取消" value="cancelled" />
+          <el-select 
+            v-model="queryParams.status" 
+            placeholder="请选择状态" 
+            clearable
+            style="width: 120px"
+          >
+            <el-option label="待处理" value="pending">
+              <el-tag size="small" type="info">待处理</el-tag>
+            </el-option>
+            <el-option label="进行中" value="in_progress">
+              <el-tag size="small" type="primary">进行中</el-tag>
+            </el-option>
+            <el-option label="已完成" value="completed">
+              <el-tag size="small" type="success">已完成</el-tag>
+            </el-option>
+            <el-option label="已取消" value="cancelled">
+              <el-tag size="small" type="danger">已取消</el-tag>
+            </el-option>
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleQuery">查询</el-button>
-          <el-button @click="resetQuery">重置</el-button>
+          <el-button type="primary" @click="handleQuery">
+            <el-icon><Search /></el-icon>查询
+          </el-button>
+          <el-button @click="resetQuery">
+            <el-icon><Refresh /></el-icon>重置
+          </el-button>
         </el-form-item>
       </el-form>
 
@@ -64,9 +104,14 @@
             <el-icon v-else><Picture /></el-icon>
           </template>
         </el-table-column>
-        <el-table-column label="任务编号" width="120">
+        <el-table-column label="编号" width="100">
           <template #default="{ row }">
-            <span>{{ row.code.slice(-4) }}</span>
+            <span 
+              class="order-code" 
+              @click="$router.push(`/production/orders/${row.id}`)"
+            >
+              {{ row.code.slice(-4) }}
+            </span>
             <el-tooltip
               class="box-item"
               effect="dark"
@@ -78,18 +123,28 @@
           </template>
         </el-table-column>
         <el-table-column prop="description" label="任务描述" width="140" show-overflow-tooltip />
-        <el-table-column label="属性" width="150">
+        <el-table-column label="任务类型" width="200">
           <template #default="{ row }">
             <div class="property-info">
               <div class="property-item">
-                <span class="label">类型：</span>
-                <el-tag size="small" :type="row.order_type === 'trial' ? 'warning' : 'success'">
-                  {{ row.order_type_display }}
-                </el-tag>
-              </div>
-              <div class="property-item">
-                <span class="label">类目：</span>
-                <span>{{ row.category_info?.name || '-' }}</span>
+                <div class="category-name">{{ row.category_info?.name || '-' }}</div>
+                <div class="type-and-channel">
+                  <el-tag
+                    size="small"
+                    :type="row.order_type === 'trial' ? 'warning' : 'success'"
+                    class="type-tag"
+                  >
+                    {{ row.order_type_display }}
+                  </el-tag>
+                  <el-tag
+                    v-if="row.channel_info"
+                    size="small"
+                    type="info"
+                    class="channel-tag"
+                  >
+                    {{ row.channel_info.name }}
+                  </el-tag>
+                </div>
               </div>
             </div>
           </template>
@@ -110,7 +165,7 @@
               <div>编码：{{ row.product_info.code }}</div>
               <div>名称：{{ row.product_info.name }}</div>
             </template>
-            <span v-else>-</span>
+            <span v-else class="pending-text">(待创建)</span>
           </template>
         </el-table-column>
         <el-table-column prop="quantity" label="计划数量" width="100" />
@@ -165,7 +220,7 @@
     <el-dialog
       :title="dialogTitle"
       v-model="dialogVisible"
-      width="700px"
+      width="900px"
       @close="resetForm"
     >
       <el-form
@@ -173,164 +228,217 @@
         :model="orderForm"
         :rules="rules"
         label-width="100px"
+        class="order-form"
       >
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="任务编号" prop="code">
-              <el-input
-                v-model="orderForm.code"
-                disabled
-                placeholder="系统自动生成"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="生产类目" prop="category">
-              <el-select
-                v-model="orderForm.category"
-                placeholder="请选择生产类目"
-                clearable
-              >
-                <el-option
-                  v-for="item in categoryOptions"
-                  :key="item.id"
-                  :label="item.name"
-                  :value="item.id"
+        <!-- 基本信息 -->
+        <div class="form-section">
+          <div class="section-title">基本信息</div>
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="任务编号" prop="code">
+                <el-input
+                  v-model="orderForm.code"
+                  disabled
+                  placeholder="系统自动生成"
                 />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="任务类型" prop="order_type">
-              <el-select v-model="orderForm.order_type" placeholder="请选择类型">
-                <el-option label="试产" value="trial" />
-                <el-option label="量产" value="mass" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="优先级" prop="priority">
-              <el-select v-model="orderForm.priority" placeholder="请选择优先级">
-                <el-option label="紧急" :value="0" />
-                <el-option label="高" :value="1" />
-                <el-option label="中" :value="2" />
-                <el-option label="低" :value="3" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="计划数量" prop="quantity">
-              <el-input-number
-                v-model="orderForm.quantity"
-                :min="1"
-                controls-position="right"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="生产主管" prop="manager">
-              <el-select
-                v-model="orderForm.manager"
-                placeholder="请选择主管"
-                filterable
-              >
-                <el-option
-                  v-for="item in managerOptions"
-                  :key="item.id"
-                  :label="item.username"
-                  :value="item.id"
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="生产类目" prop="category">
+                <el-select
+                  v-model="orderForm.category"
+                  placeholder="请选择生产类目"
+                  clearable
+                  style="width: 100%"
+                >
+                  <el-option
+                    v-for="item in categoryOptions"
+                    :key="item.id"
+                    :label="item.name"
+                    :value="item.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="来源渠道" prop="channel">
+                <el-select
+                  v-model="orderForm.channel"
+                  placeholder="请选择来源渠道"
+                  clearable
+                  style="width: 100%"
+                >
+                  <el-option
+                    v-for="item in channelOptions"
+                    :key="item.id"
+                    :label="item.name"
+                    :value="item.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="生产主管" prop="manager">
+                <el-select
+                  v-model="orderForm.manager"
+                  placeholder="请选择主管"
+                  filterable
+                  style="width: 100%"
+                >
+                  <el-option
+                    v-for="item in managerOptions"
+                    :key="item.id"
+                    :label="item.username"
+                    :value="item.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
+
+        <!-- 任务配置 -->
+        <div class="form-section">
+          <div class="section-title">任务配置</div>
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item label="任务类型" prop="order_type">
+                <el-select 
+                  v-model="orderForm.order_type" 
+                  placeholder="请选择类型"
+                  style="width: 100%"
+                >
+                  <el-option label="试产" value="trial">
+                    <el-tag size="small" type="warning">试产</el-tag>
+                  </el-option>
+                  <el-option label="量产" value="mass">
+                    <el-tag size="small" type="success">量产</el-tag>
+                  </el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="优先级" prop="priority">
+                <el-select 
+                  v-model="orderForm.priority" 
+                  placeholder="请选择优先级"
+                  style="width: 100%"
+                >
+                  <el-option label="紧急" :value="0">
+                    <el-tag size="small" type="danger">紧急</el-tag>
+                  </el-option>
+                  <el-option label="高" :value="1">
+                    <el-tag size="small" type="warning">高</el-tag>
+                  </el-option>
+                  <el-option label="中" :value="2">
+                    <el-tag size="small" type="primary">中</el-tag>
+                  </el-option>
+                  <el-option label="低" :value="3">
+                    <el-tag size="small" type="info">低</el-tag>
+                  </el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="计划数量" prop="quantity">
+                <el-input-number
+                  v-model="orderForm.quantity"
+                  :min="1"
+                  controls-position="right"
+                  style="width: 100%"
                 />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="开始日期" prop="planned_start_date">
-              <el-date-picker
-                v-model="orderForm.planned_start_date"
-                type="date"
-                placeholder="选择开始日期"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="结束日期" prop="planned_end_date">
-              <el-date-picker
-                v-model="orderForm.planned_end_date"
-                type="date"
-                placeholder="选择结束日期"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="排序优先级" prop="priority_order">
-              <el-input-number
-                v-model="orderForm.priority_order"
-                :min="0"
-                :max="999"
-                placeholder="请输入排序优先级"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="主图">
-              <el-upload
-                class="image-upload"
-                :show-file-list="false"
-                accept="image/jpeg,image/png,image/gif"
-                :before-upload="beforeImageUpload"
-                @change="handleImageChange"
-              >
-                <img v-if="imageUrl" :src="imageUrl" class="preview-image" />
-                <el-button v-else type="primary">点击上传</el-button>
-                <template #tip>
-                  <div class="el-upload__tip">只能上传 jpg/png/gif 文件，且不超过 5MB</div>
-                </template>
-              </el-upload>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        
-        <el-form-item label="任务描述" prop="description">
-          <el-input
-            v-model="orderForm.description"
-            type="textarea"
-            rows="3"
-            placeholder="请输入任务描述"
-          />
-        </el-form-item>
-        
-        <el-form-item label="技术要求" prop="technical_requirements">
-          <el-input
-            v-model="orderForm.technical_requirements"
-            type="textarea"
-            rows="3"
-            placeholder="请输入技术要求"
-          />
-        </el-form-item>
-        
-        <el-form-item label="质量要求" prop="quality_requirements">
-          <el-input
-            v-model="orderForm.quality_requirements"
-            type="textarea"
-            rows="3"
-            placeholder="请输入质量要求"
-          />
-        </el-form-item>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-row :gutter="20">
+            <el-col :span="8">
+              <el-form-item label="开始日期" prop="planned_start_date">
+                <el-date-picker
+                  v-model="orderForm.planned_start_date"
+                  type="date"
+                  placeholder="选择开始日期"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="结束日期" prop="planned_end_date">
+                <el-date-picker
+                  v-model="orderForm.planned_end_date"
+                  type="date"
+                  placeholder="选择结束日期"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="排序优先级" prop="priority_order">
+                <el-input-number
+                  v-model="orderForm.priority_order"
+                  :min="0"
+                  :max="999"
+                  controls-position="right"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
+
+        <!-- 任务详情 -->
+        <div class="form-section">
+          <div class="section-title">任务详情</div>
+          <el-form-item label="任务描述" prop="description">
+            <el-input
+              v-model="orderForm.description"
+              type="textarea"
+              rows="3"
+              placeholder="请输入任务描述"
+            />
+          </el-form-item>
+          
+          <el-form-item label="技术要求" prop="technical_requirements">
+            <el-input
+              v-model="orderForm.technical_requirements"
+              type="textarea"
+              rows="3"
+              placeholder="请输入技术要求"
+            />
+          </el-form-item>
+          
+          <el-form-item label="质量要求" prop="quality_requirements">
+            <el-input
+              v-model="orderForm.quality_requirements"
+              type="textarea"
+              rows="3"
+              placeholder="请输入质量要求"
+            />
+          </el-form-item>
+        </div>
+
+        <!-- 附件信息 -->
+        <div class="form-section">
+          <div class="section-title">附件信息</div>
+          <el-form-item label="主图">
+            <el-upload
+              class="image-upload"
+              :show-file-list="false"
+              accept="image/jpeg,image/png,image/gif"
+              :before-upload="beforeImageUpload"
+              @change="handleImageChange"
+            >
+              <img v-if="imageUrl" :src="imageUrl" class="preview-image" />
+              <el-button v-else type="primary">点击上传</el-button>
+              <template #tip>
+                <div class="el-upload__tip">只能上传 jpg/png/gif 文件，且不超过 5MB</div>
+              </template>
+            </el-upload>
+          </el-form-item>
+        </div>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -343,27 +451,20 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { CaretBottom, View, Edit, SetUp, Delete, Picture, InfoFilled } from '@element-plus/icons-vue'
+import { CaretBottom, View, Edit, SetUp, Delete, Picture, InfoFilled, Search, Refresh } from '@element-plus/icons-vue'
 import { 
   getOrderList, 
   createOrder, 
   updateOrder, 
   deleteOrder, 
   updateOrderStatus,
-  getCategoryList 
+  getCategoryList,
+  getNextOrderCode,
+  getChannelList
 } from '@/api/production'
 import { getSKUList } from '@/api/product'
 import { getUserList } from '@/api/auth'
 import { useUserStore } from '@/stores/user'
-
-// 日期格式化方法
-const formatDate = (date) => {
-  const d = date || new Date()
-  const year = d.getFullYear().toString().substr(-2)
-  const month = (d.getMonth() + 1).toString().padStart(2, '0')
-  const day = d.getDate().toString().padStart(2, '0')
-  return year + month + day
-}
 
 // 查询参数
 const queryParams = ref({
@@ -388,15 +489,16 @@ const orderFormRef = ref()
 
 // 表单数据
 const orderForm = ref({
-  code: 'D' + formatDate() + '-' + Math.floor(1000 + Math.random() * 9000),  // 现在可以使用 formatDate
+  code: '',  // 将由后端生成
   product: null,
   category: null,
-  order_type: 'mass',
+  channel: null,  // 添加渠道字段
+  order_type: 'trial',  // 默认为试产
   quantity: 1,
-  priority: 2,
+  priority: 1,  // 默认为高优先级
   priority_order: 0,
   manager: null,
-  planned_start_date: '',
+  planned_start_date: new Date().toISOString().split('T')[0],  // 默认为当天
   planned_end_date: '',
   technical_requirements: '',
   quality_requirements: '',
@@ -455,6 +557,9 @@ const managerOptions = ref([])
 
 // 类目选项
 const categoryOptions = ref([])
+
+// 渠道选项
+const channelOptions = ref([])
 
 // 获取优先级标签类型
 const getPriorityType = (priority) => {
@@ -598,10 +703,26 @@ const getCategoryOptions = async () => {
   }
 }
 
+// 获取渠道列表
+const getChannelOptions = async () => {
+  try {
+    const { results } = await getChannelList({ is_active: true })
+    channelOptions.value = results
+  } catch (error) {
+    ElMessage.error('获取渠道列表失败')
+  }
+}
+
 // 新增任务
-const handleAdd = () => {
+const handleAdd = async () => {
   dialogTitle.value = '新建任务'
-  orderForm.value.code = 'D' + formatDate() + '-' + Math.floor(1000 + Math.random() * 9000)
+  try {
+    const { code } = await getNextOrderCode()
+    orderForm.value.code = code
+  } catch (error) {
+    ElMessage.error('获取任务编号失败')
+    return
+  }
   dialogVisible.value = true
 }
 
@@ -664,7 +785,8 @@ const handleSubmit = async () => {
       manager: orderForm.value.manager,
       description: orderForm.value.description,
       technical_requirements: orderForm.value.technical_requirements || '',
-      quality_requirements: orderForm.value.quality_requirements || ''
+      quality_requirements: orderForm.value.quality_requirements || '',
+      channel: orderForm.value.channel
     }
     
     // 处理日期字段
@@ -716,17 +838,18 @@ const handleSubmit = async () => {
 // 重置表单
 const resetForm = () => {
   orderFormRef.value?.resetFields()
-  imageUrl.value = ''  // 清除预览图
+  imageUrl.value = ''
   Object.assign(orderForm.value, {
-    code: 'D' + formatDate() + '-' + Math.floor(1000 + Math.random() * 9000),
+    code: '',
     product: null,
     category: null,
-    order_type: 'mass',
+    channel: null,  // 添加渠道字段重置
+    order_type: 'trial',
     quantity: 1,
-    priority: 2,
+    priority: 1,
     priority_order: 0,
     manager: null,
-    planned_start_date: '',
+    planned_start_date: new Date().toISOString().split('T')[0],
     planned_end_date: '',
     technical_requirements: '',
     quality_requirements: '',
@@ -740,6 +863,7 @@ onMounted(() => {
   getList()
   getManagerOptions()
   getCategoryOptions()
+  getChannelOptions()  // 添加获取渠道列表
 })
 </script>
 
@@ -764,7 +888,7 @@ onMounted(() => {
   .priority-info {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
     
     .priority-order {
       color: #909399;
@@ -777,13 +901,24 @@ onMounted(() => {
       line-height: 1.8;
       font-size: 13px;
       
-      .label {
-        color: #909399;
-        margin-right: 4px;
+      .category-name {
+        font-weight: bold;
+        margin-bottom: 8px;
       }
       
-      .el-tag {
-        margin-left: 2px;
+      .type-and-channel {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        
+        .type-tag {
+          min-width: 40px;
+          text-align: center;
+        }
+        
+        .channel-tag {
+          font-size: 12px;
+        }
       }
     }
   }
@@ -809,12 +944,81 @@ onMounted(() => {
     }
   }
 
+  .order-code {
+    font-size: 20px;
+    font-weight: bold;
+    color: #303133;
+    cursor: pointer;
+    transition: color 0.3s;
+    
+    &:hover {
+      color: #409EFF;
+      text-decoration: underline;
+    }
+  }
+
   .info-icon {
-    margin-left: 4px;
+    margin-left: 8px;
     font-size: 14px;
     color: #909399;
     cursor: pointer;
     vertical-align: middle;
+  }
+
+  .pending-text {
+    color: #909399;
+    font-size: 13px;
+    font-style: italic;
+  }
+
+  .form-section {
+    margin-bottom: 12px;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    
+    .section-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #303133;
+      margin-bottom: 16px;
+      padding-left: 8px;
+      border-left: 4px solid #409EFF;
+    }
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .order-form {
+    :deep(.el-form-item__label) {
+      font-weight: 500;
+    }
+    
+    :deep(.el-form-item) {
+      margin-bottom: 12px;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+    
+    :deep(.el-row) {
+      margin-bottom: 8px;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+    
+    :deep(.el-input-number) {
+      width: 100%;
+    }
+    
+    :deep(.el-date-editor) {
+      width: 100%;
+    }
   }
 }
 </style> 

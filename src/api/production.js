@@ -58,4 +58,21 @@ export function getOrder(id) {
     url: `/api/production/orders/${id}/`,
     method: 'get'
   })
+}
+
+// 获取下一个任务编号
+export function getNextOrderCode() {
+  return request({
+    url: '/api/production/orders/next_id/',
+    method: 'get'
+  })
+}
+
+// 获取渠道列表
+export function getChannelList(params) {
+  return request({
+    url: '/api/production/channels/',
+    method: 'get',
+    params
+  })
 } 

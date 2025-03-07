@@ -53,13 +53,15 @@
         style="width: 100%"
       >
         <el-table-column prop="code" label="任务编号" width="120" />
-        <el-table-column prop="priority_order" label="排序优先级" width="100" />
         <el-table-column prop="description" label="任务描述" width="140" show-overflow-tooltip />
-        <el-table-column label="优先级" width="80">
+        <el-table-column label="优先级" width="120">
           <template #default="{ row }">
-            <el-tag size="small" :type="getPriorityType(row.priority)">
-              {{ row.priority_display }}
-            </el-tag>
+            <div class="priority-info">
+              <el-tag size="small" :type="getPriorityType(row.priority)">
+                {{ row.priority_display }}
+              </el-tag>
+              <span class="priority-order">({{ row.priority_order }})</span>
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="属性" width="150">
@@ -315,7 +317,7 @@ const queryParams = ref({
   status: '',
   page: 1,
   page_size: 10,
-  ordering: '-priority_order'  // 默认按排序优先级倒序
+  ordering: 'priority,-priority_order'  // 先按优先级升序（紧急->低），再按排序优先级倒序
 })
 
 // 数据列表
@@ -339,9 +341,9 @@ const orderForm = ref({
   manager: null,
   planned_start_date: '',
   planned_end_date: '',
-  technical_requirements: '',
-  quality_requirements: '',
-  description: ''
+  technical_requirements: null,
+  quality_requirements: null,
+  description: null
 })
 
 // 表单校验规则
@@ -354,10 +356,16 @@ const rules = {
     { required: true, message: '请选择任务类型', trigger: 'change' }
   ],
   quantity: [
-    { required: true, message: '请输入计划数量', trigger: 'blur' }
+    { required: true, message: '请输入计划数量', trigger: 'blur' },
+    { type: 'number', min: 1, message: '数量必须大于0', trigger: 'blur' }
   ],
   priority: [
-    { required: true, message: '请选择优先级', trigger: 'change' }
+    { required: true, message: '请选择优先级', trigger: 'change' },
+    { type: 'number', message: '优先级必须是数字', trigger: 'change' }
+  ],
+  priority_order: [
+    { required: true, message: '请输入排序优先级', trigger: 'blur' },
+    { type: 'number', min: 0, message: '排序优先级必须大于等于0', trigger: 'blur' }
   ],
   manager: [
     { required: true, message: '请选择生产主管', trigger: 'change' }
@@ -366,7 +374,17 @@ const rules = {
     { required: true, message: '请选择计划开始日期', trigger: 'change' }
   ],
   planned_end_date: [
-    { required: true, message: '请选择计划结束日期', trigger: 'change' }
+    { required: true, message: '请选择计划结束日期', trigger: 'change' },
+    {
+      validator: (rule, value, callback) => {
+        if (orderForm.value.planned_start_date && value && value < orderForm.value.planned_start_date) {
+          callback(new Error('结束日期不能早于开始日期'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'change'
+    }
   ]
 }
 
@@ -403,7 +421,7 @@ const getStatusType = (status) => {
 const getList = async () => {
   loading.value = true
   try {
-    const { count, results } = await getOrderList(queryParams)
+    const { count, results } = await getOrderList(queryParams.value)
     orderList.value = results
     total.value = count
   } catch (error) {
@@ -577,9 +595,9 @@ const resetForm = () => {
     manager: null,
     planned_start_date: '',
     planned_end_date: '',
-    technical_requirements: '',
-    quality_requirements: '',
-    description: ''
+    technical_requirements: null,
+    quality_requirements: null,
+    description: null
   })
 }
 
@@ -605,6 +623,17 @@ onMounted(() => {
     margin-top: 20px;
     display: flex;
     justify-content: flex-end;
+  }
+
+  .priority-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    
+    .priority-order {
+      color: #909399;
+      font-size: 13px;
+    }
   }
 
   .property-info {

@@ -139,7 +139,7 @@
                   <el-tag
                     v-if="row.channel_info"
                     size="small"
-                    type="info"
+                    :type="getChannelTagType(row.channel_info.id)"
                     class="channel-tag"
                   >
                     {{ row.channel_info.name }}
@@ -584,6 +584,19 @@ const getStatusType = (status) => {
   return types[status] || 'info'
 }
 
+// 获取渠道标签类型
+const getChannelTagType = (channelId) => {
+  // 根据渠道ID返回不同的类型
+  const types = {
+    1: 'success',    // 自营渠道
+    2: 'warning',    // 电商渠道
+    3: 'danger',     // 外贸渠道
+    4: 'primary',    // 代工渠道
+    5: 'info'        // 其他渠道
+  }
+  return types[channelId] || 'info'
+}
+
 // 获取列表数据
 const getList = async () => {
   loading.value = true
@@ -934,6 +947,10 @@ onMounted(() => {
         
         .channel-tag {
           font-size: 12px;
+          padding: 0 8px;
+          height: 20px;
+          line-height: 18px;
+          border-radius: 10px;
         }
       }
     }

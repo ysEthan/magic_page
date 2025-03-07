@@ -50,13 +50,18 @@
       <el-table
         v-loading="loading"
         :data="orderList"
-        :default-sort="{ prop: 'priority_order', order: 'ascending' }"
-        @sort-change="handleSortChange"
         style="width: 100%"
       >
         <el-table-column prop="code" label="任务编号" width="120" />
-        <el-table-column prop="priority_order" label="排序优先级" width="100" sortable />
+        <el-table-column prop="priority_order" label="排序优先级" width="100" />
         <el-table-column prop="description" label="任务描述" width="140" show-overflow-tooltip />
+        <el-table-column label="优先级" width="80">
+          <template #default="{ row }">
+            <el-tag size="small" :type="getPriorityType(row.priority)">
+              {{ row.priority_display }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="属性" width="150">
           <template #default="{ row }">
             <div class="property-info">
@@ -64,12 +69,6 @@
                 <span class="label">类型：</span>
                 <el-tag size="small" :type="row.order_type === 'trial' ? 'warning' : 'success'">
                   {{ row.order_type_display }}
-                </el-tag>
-              </div>
-              <div class="property-item">
-                <span class="label">优先级：</span>
-                <el-tag size="small" :type="getPriorityType(row.priority)">
-                  {{ row.priority_display }}
                 </el-tag>
               </div>
               <div class="property-item">
@@ -316,7 +315,7 @@ const queryParams = ref({
   status: '',
   page: 1,
   page_size: 10,
-  ordering: 'priority_order'  // 默认按排序优先级升序
+  ordering: '-priority_order'  // 默认按排序优先级倒序
 })
 
 // 数据列表
@@ -582,12 +581,6 @@ const resetForm = () => {
     quality_requirements: '',
     description: ''
   })
-}
-
-// 处理表格排序变化
-const handleSortChange = ({ prop, order }) => {
-  queryParams.value.ordering = order === 'ascending' ? prop : `-${prop}`
-  getList()
 }
 
 onMounted(() => {

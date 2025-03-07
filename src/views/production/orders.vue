@@ -293,6 +293,15 @@
           </el-col>
         </el-row>
         
+        <el-form-item label="任务描述" prop="description">
+          <el-input
+            v-model="orderForm.description"
+            type="textarea"
+            rows="3"
+            placeholder="请输入任务描述"
+          />
+        </el-form-item>
+        
         <el-form-item label="技术要求" prop="technical_requirements">
           <el-input
             v-model="orderForm.technical_requirements"
@@ -308,15 +317,6 @@
             type="textarea"
             rows="3"
             placeholder="请输入质量要求"
-          />
-        </el-form-item>
-        
-        <el-form-item label="任务描述" prop="description">
-          <el-input
-            v-model="orderForm.description"
-            type="textarea"
-            rows="3"
-            placeholder="请输入任务描述"
           />
         </el-form-item>
       </el-form>

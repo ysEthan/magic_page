@@ -65,6 +65,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="code" label="任务编号" width="120" />
+        <el-table-column prop="description" label="任务描述" width="140" show-overflow-tooltip />
         <el-table-column label="属性" width="150">
           <template #default="{ row }">
             <div class="property-info">
@@ -81,7 +82,6 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="description" label="任务描述" width="140" show-overflow-tooltip />
         <el-table-column label="优先级" width="120">
           <template #default="{ row }">
             <div class="priority-info">

@@ -64,7 +64,19 @@
             <el-icon v-else><Picture /></el-icon>
           </template>
         </el-table-column>
-        <el-table-column prop="code" label="任务编号" width="120" />
+        <el-table-column label="任务编号" width="120">
+          <template #default="{ row }">
+            <span>{{ row.code.slice(-4) }}</span>
+            <el-tooltip
+              class="box-item"
+              effect="dark"
+              :content="row.code"
+              placement="top"
+            >
+              <el-icon class="info-icon"><InfoFilled /></el-icon>
+            </el-tooltip>
+          </template>
+        </el-table-column>
         <el-table-column prop="description" label="任务描述" width="140" show-overflow-tooltip />
         <el-table-column label="属性" width="150">
           <template #default="{ row }">
@@ -331,7 +343,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { CaretBottom, View, Edit, SetUp, Delete, Picture } from '@element-plus/icons-vue'
+import { CaretBottom, View, Edit, SetUp, Delete, Picture, InfoFilled } from '@element-plus/icons-vue'
 import { 
   getOrderList, 
   createOrder, 
@@ -411,6 +423,10 @@ const rules = {
   ],
   manager: [
     { required: true, message: '请选择生产主管', trigger: 'change' }
+  ],
+  description: [
+    { required: true, message: '请输入任务描述', trigger: 'blur' },
+    { min: 1, max: 500, message: '长度在 1 到 500 个字符', trigger: 'blur' }
   ],
   planned_start_date: [
     { required: true, message: '请选择计划开始日期', trigger: 'change' }
@@ -638,20 +654,36 @@ const handleSubmit = async () => {
     const formData = new FormData()
     
     // 添加基本字段
-    Object.keys(orderForm.value).forEach(key => {
-      if (key === 'main_image' && orderForm.value.main_image) {
-        formData.append('main_image', orderForm.value.main_image)
-      } else if (key !== 'main_image_url' && orderForm.value[key] != null) {
-        // 对于日期类型的字段特殊处理
-        if (key === 'planned_start_date' || key === 'planned_end_date') {
-          if (orderForm.value[key]) {
-            formData.append(key, new Date(orderForm.value[key]).toISOString().split('T')[0])
-          }
-        } else {
-          formData.append(key, orderForm.value[key])
-        }
-      }
+    const formFields = {
+      code: orderForm.value.code,
+      category: orderForm.value.category,
+      order_type: orderForm.value.order_type,
+      quantity: orderForm.value.quantity,
+      priority: orderForm.value.priority,
+      priority_order: orderForm.value.priority_order,
+      manager: orderForm.value.manager,
+      description: orderForm.value.description,
+      technical_requirements: orderForm.value.technical_requirements || '',
+      quality_requirements: orderForm.value.quality_requirements || ''
+    }
+    
+    // 处理日期字段
+    if (orderForm.value.planned_start_date) {
+      formFields.planned_start_date = new Date(orderForm.value.planned_start_date).toISOString().split('T')[0]
+    }
+    if (orderForm.value.planned_end_date) {
+      formFields.planned_end_date = new Date(orderForm.value.planned_end_date).toISOString().split('T')[0]
+    }
+    
+    // 添加所有字段到 FormData
+    Object.keys(formFields).forEach(key => {
+      formData.append(key, formFields[key])
     })
+    
+    // 添加图片文件（如果有）
+    if (orderForm.value.main_image) {
+      formData.append('main_image', orderForm.value.main_image)
+    }
     
     // 添加创建者信息
     if (!orderForm.value.id) {  // 只在创建时添加
@@ -775,6 +807,14 @@ onMounted(() => {
       color: #909399;
       margin-top: 4px;
     }
+  }
+
+  .info-icon {
+    margin-left: 4px;
+    font-size: 14px;
+    color: #909399;
+    cursor: pointer;
+    vertical-align: middle;
   }
 }
 </style> 

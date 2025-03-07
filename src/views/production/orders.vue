@@ -50,11 +50,12 @@
       <el-table
         v-loading="loading"
         :data="orderList"
-        :default-sort="{ prop: 'sort_priority', order: 'ascending' }"
+        :default-sort="{ prop: 'priority_order', order: 'ascending' }"
         @sort-change="handleSortChange"
         style="width: 100%"
       >
         <el-table-column prop="code" label="任务编号" width="120" />
+        <el-table-column prop="priority_order" label="排序优先级" width="100" sortable />
         <el-table-column prop="description" label="任务描述" width="140" show-overflow-tooltip />
         <el-table-column label="属性" width="150">
           <template #default="{ row }">
@@ -96,7 +97,6 @@
             <div>结束：{{ row.planned_end_date }}</div>
           </template>
         </el-table-column>
-        <el-table-column prop="sort_priority" label="排序优先级" width="100" sortable />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-dropdown trigger="click">
@@ -253,9 +253,9 @@
         
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="排序优先级" prop="sort_priority">
+            <el-form-item label="排序优先级" prop="priority_order">
               <el-input-number
-                v-model="orderForm.sort_priority"
+                v-model="orderForm.priority_order"
                 :min="0"
                 :max="999"
                 placeholder="请输入排序优先级"
@@ -316,7 +316,7 @@ const queryParams = ref({
   status: '',
   page: 1,
   page_size: 10,
-  ordering: 'sort_priority'  // 默认按排序优先级升序
+  ordering: 'priority_order'  // 默认按排序优先级升序
 })
 
 // 数据列表
@@ -336,7 +336,7 @@ const orderForm = ref({
   order_type: 'mass',
   quantity: 1,
   priority: 2,
-  sort_priority: 0,
+  priority_order: 0,
   manager: null,
   planned_start_date: '',
   planned_end_date: '',
@@ -519,7 +519,7 @@ const handleAdd = () => {
 // 编辑任务
 const handleEdit = (row) => {
   dialogTitle.value = '编辑任务'
-  Object.assign(orderForm, row)
+  Object.assign(orderForm.value, row)
   dialogVisible.value = true
 }
 
@@ -528,20 +528,22 @@ const userStore = useUserStore()
 
 // 提交表单
 const handleSubmit = async () => {
-  await orderFormRef.value.validate()
-  
   try {
+    await orderFormRef.value.validate()
+    
     // 格式化日期
     const formData = {
-      ...orderForm,
-      planned_start_date: orderForm.planned_start_date ? new Date(orderForm.planned_start_date).toISOString().split('T')[0] : null,
-      planned_end_date: orderForm.planned_end_date ? new Date(orderForm.planned_end_date).toISOString().split('T')[0] : null,
+      ...orderForm.value,
+      planned_start_date: orderForm.value.planned_start_date ? new Date(orderForm.value.planned_start_date).toISOString().split('T')[0] : null,
+      planned_end_date: orderForm.value.planned_end_date ? new Date(orderForm.value.planned_end_date).toISOString().split('T')[0] : null,
       created_at: new Date().toISOString(),
-      created_by: userStore.userInfo.id  // 添加创建人ID
+      created_by: userStore.userInfo.id
     }
     
-    if (orderForm.id) {
-      await updateOrder(orderForm.id, formData)
+    console.log('提交的表单数据:', formData)
+    
+    if (orderForm.value.id) {
+      await updateOrder(orderForm.value.id, formData)
       ElMessage.success('更新成功')
     } else {
       await createOrder(formData)
@@ -550,20 +552,29 @@ const handleSubmit = async () => {
     dialogVisible.value = false
     getList()
   } catch (error) {
-    ElMessage.error(error.response?.data?.detail || '操作失败')
+    console.error('提交失败:', error)
+    if (error.response?.data) {
+      // 显示详细的后端验证错误
+      const errorMsg = typeof error.response.data === 'object' 
+        ? Object.values(error.response.data).flat().join('\n')
+        : error.response.data
+      ElMessage.error(errorMsg)
+    } else {
+      ElMessage.error(error.message || '操作失败')
+    }
   }
 }
 
 // 重置表单
 const resetForm = () => {
   orderFormRef.value?.resetFields()
-  Object.assign(orderForm, {
+  Object.assign(orderForm.value, {
     code: '',
     product: null,
     order_type: 'mass',
     quantity: 1,
     priority: 2,
-    sort_priority: 0,
+    priority_order: 0,
     manager: null,
     planned_start_date: '',
     planned_end_date: '',

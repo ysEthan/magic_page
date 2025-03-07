@@ -3,102 +3,129 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters import rest_framework as filters
-from .models import Brand, Category, SPU, Product
+from .models import ProductionCategory, ProductionOrder, ProductionStep, ProductionComment
 from .serializers import (
-    BrandSerializer, CategorySerializer, SPUSerializer, ProductSerializer
+    ProductionCategorySerializer, ProductionOrderSerializer,
+    ProductionStepSerializer, ProductionCommentSerializer
 )
 
 
-class BrandViewSet(viewsets.ModelViewSet):
-    """品牌管理视图集"""
-    queryset = Brand.objects.all()
-    serializer_class = BrandSerializer
+class ProductionCategoryViewSet(viewsets.ModelViewSet):
+    """生产类目视图集"""
+    queryset = ProductionCategory.objects.all()
+    serializer_class = ProductionCategorySerializer
     permission_classes = [IsAuthenticated]
-    filterset_fields = ['is_active']
-    search_fields = ['name', 'description']
+    filterset_fields = ['category_type', 'is_active']
+    search_fields = ['code', 'name', 'description']
 
 
-class CategoryViewSet(viewsets.ModelViewSet):
-    """商品分类视图集"""
-    queryset = Category.objects.filter(parent=None)  # 只获取顶级分类
-    serializer_class = CategorySerializer
-    permission_classes = [IsAuthenticated]
-    filterset_fields = ['level', 'is_active']
-    search_fields = ['name', 'name_en']
-
-    @action(detail=False, methods=['get'])
-    def all_categories(self, request):
-        """获取所有分类的平铺列表"""
-        categories = Category.objects.all()
-        serializer = self.get_serializer(categories, many=True)
-        return Response(serializer.data)
-
-
-class SPUFilter(filters.FilterSet):
-    """SPU过滤器"""
+class ProductionOrderFilter(filters.FilterSet):
+    min_planned_start_date = filters.DateFilter(field_name='planned_start_date', lookup_expr='gte')
+    max_planned_start_date = filters.DateFilter(field_name='planned_start_date', lookup_expr='lte')
     min_created_at = filters.DateTimeFilter(field_name='created_at', lookup_expr='gte')
     max_created_at = filters.DateTimeFilter(field_name='created_at', lookup_expr='lte')
+    min_priority_order = filters.NumberFilter(field_name='priority_order', lookup_expr='gte')
+    max_priority_order = filters.NumberFilter(field_name='priority_order', lookup_expr='lte')
 
     class Meta:
-        model = SPU
+        model = ProductionOrder
         fields = {
-            'product_type': ['exact'],
-            'production_process': ['exact'],
-            'brand': ['exact'],
+            'order_type': ['exact'],
+            'status': ['exact'],
+            'priority': ['exact'],
+            'priority_order': ['exact'],
             'category': ['exact'],
-            'is_active': ['exact'],
-            'poc': ['exact'],
+            'product': ['exact'],
+            'manager': ['exact'],
+            'created_by': ['exact'],
         }
 
 
-class SPUViewSet(viewsets.ModelViewSet):
-    """SPU管理视图集"""
-    queryset = SPU.objects.all()
-    serializer_class = SPUSerializer
+class ProductionOrderViewSet(viewsets.ModelViewSet):
+    """生产任务视图集"""
+    queryset = ProductionOrder.objects.all()
+    serializer_class = ProductionOrderSerializer
     permission_classes = [IsAuthenticated]
-    filterset_class = SPUFilter
-    search_fields = ['code', 'name', 'remark']
-    ordering_fields = ['created_at', 'updated_at']
+    filterset_class = ProductionOrderFilter
+    search_fields = ['code', 'description']
+    ordering_fields = ['created_at', 'planned_start_date', 'priority', 'priority_order']
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
 
     @action(detail=True, methods=['post'])
-    def toggle_active(self, request, pk=None):
-        """切换SPU的启用状态"""
-        spu = self.get_object()
-        spu.is_active = not spu.is_active
-        spu.save()
-        return Response({'status': 'success', 'is_active': spu.is_active})
-
-
-class ProductFilter(filters.FilterSet):
-    """SKU过滤器"""
-    min_weight = filters.NumberFilter(field_name='weight', lookup_expr='gte')
-    max_weight = filters.NumberFilter(field_name='weight', lookup_expr='lte')
-
-    class Meta:
-        model = Product
-        fields = {
-            'spu': ['exact'],
-            'material': ['exact'],
-            'color': ['exact'],
-            'plating_process': ['exact'],
-            'is_reviewed': ['exact'],
-            'is_active': ['exact'],
-        }
-
-
-class ProductViewSet(viewsets.ModelViewSet):
-    """SKU管理视图集"""
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
-    permission_classes = [IsAuthenticated]
-    filterset_class = ProductFilter
-    search_fields = ['code', 'name', 'material', 'color']
-    ordering_fields = ['created_at', 'updated_at', 'weight']
+    def update_status(self, request, pk=None):
+        """更新生产任务状态"""
+        order = self.get_object()
+        new_status = request.data.get('status')
+        if new_status in dict(ProductionOrder.STATUS_CHOICES):
+            order.status = new_status
+            order.save()
+            return Response({'status': 'success'})
+        return Response(
+            {'error': 'Invalid status'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
     @action(detail=True, methods=['post'])
-    def toggle_review(self, request, pk=None):
-        """切换SKU的审核状态"""
-        product = self.get_object()
-        product.is_reviewed = not product.is_reviewed
-        product.save()
-        return Response({'status': 'success', 'is_reviewed': product.is_reviewed}) 
+    def update_priority_order(self, request, pk=None):
+        """更新任务优先级排序"""
+        order = self.get_object()
+        new_priority_order = request.data.get('priority_order')
+        
+        try:
+            new_priority_order = int(new_priority_order)
+            if new_priority_order < 0:
+                return Response(
+                    {'error': '优先级排序值不能小于0'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            order.priority_order = new_priority_order
+            order.save()
+            return Response({
+                'status': 'success',
+                'priority_order': new_priority_order
+            })
+        except (TypeError, ValueError):
+            return Response(
+                {'error': '无效的优先级排序值'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class ProductionStepViewSet(viewsets.ModelViewSet):
+    """生产步骤视图集"""
+    queryset = ProductionStep.objects.all()
+    serializer_class = ProductionStepSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_fields = ['order', 'step_type', 'status', 'operator']
+    search_fields = ['name', 'description']
+    ordering_fields = ['sequence', 'start_time', 'end_time']
+
+    @action(detail=True, methods=['post'])
+    def update_status(self, request, pk=None):
+        """更新步骤状态"""
+        step = self.get_object()
+        new_status = request.data.get('status')
+        if new_status in dict(ProductionStep.STATUS_CHOICES):
+            step.status = new_status
+            step.save()
+            return Response({'status': 'success'})
+        return Response(
+            {'error': 'Invalid status'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+class ProductionCommentViewSet(viewsets.ModelViewSet):
+    """生产评论视图集"""
+    queryset = ProductionComment.objects.all()
+    serializer_class = ProductionCommentSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_fields = ['order', 'step', 'comment_type', 'author']
+    search_fields = ['content']
+    ordering_fields = ['created_at']
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user) 

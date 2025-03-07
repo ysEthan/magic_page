@@ -56,6 +56,13 @@
             <el-icon><User /></el-icon>
             <span>个人信息</span>
           </el-menu-item>
+          <el-sub-menu index="5">
+            <template #title>
+              <el-icon><Tools /></el-icon>
+              <span>生产管理</span>
+            </template>
+            <el-menu-item index="/production/orders">生产任务</el-menu-item>
+          </el-sub-menu>
         </el-menu>
       </el-aside>
       
@@ -106,7 +113,8 @@ import {
   ShoppingCart,
   Sell,
   Fold,
-  Expand
+  Expand,
+  Tools
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

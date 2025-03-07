@@ -1,230 +1,266 @@
 from django.db import models
-from django.core.validators import MinValueValidator
 from django.utils.translation import gettext_lazy as _
-from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
-import os
-import uuid
+from django.core.validators import MinValueValidator
+from apps.products.models import Product
 
 User = get_user_model()
 
-def product_image_path(instance, filename):
-    """为商品图片生成上传路径"""
-    ext = filename.split('.')[-1]
-    new_filename = f"{uuid.uuid4().hex[:8]}_{instance.code}.{ext}"
-    return os.path.join('products', new_filename)
-
-class Brand(models.Model):
-    """品牌"""
-    name = models.CharField(_('品牌名称'), max_length=100)
-    description = models.TextField(_('品牌描述'), blank=True, null=True)
-    logo_url = models.CharField(_('品牌LOGO'), max_length=255, null=True, blank=True)
-    is_active = models.BooleanField(_('是否启用'), default=True)
-    created_at = models.DateTimeField(_('创建时间'), auto_now_add=True)
-    updated_at = models.DateTimeField(_('更新时间'), auto_now=True)
-
-    class Meta:
-        verbose_name = _('品牌')
-        verbose_name_plural = _('品牌列表')
-        ordering = ['name']
-
-    def __str__(self):
-        return self.name
-
-class Category(models.Model):
-    """商品分类"""
-    LEVEL_CHOICES = (
-        (1, '一级分类'),
-        (2, '二级分类'),
-        (3, '三级分类'),
-        (4, '四级分类'),
-        (5, '五级分类'),
-        (6, '六级分类'),
-        (7, '七级分类'),
-    )
-
-    name_en = models.CharField(_('英文名称'), max_length=100)
-    name = models.CharField(_('中文名称'), max_length=100)
-    description = models.TextField(_('描述'), blank=True, null=True)
-    parent = models.ForeignKey(
-        'self',
-        verbose_name=_('父类别'),
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name='children'
-    )
-    rank = models.IntegerField(_('排序'), default=0)
-    level = models.IntegerField(
-        _('分类层级'),
-        choices=LEVEL_CHOICES,
-        default=1
-    )
-    is_last_level = models.BooleanField(_('是否最后一级'), default=False)
-    is_active = models.BooleanField(_('是否启用'), default=True)
-    created_at = models.DateTimeField(_('创建时间'), auto_now_add=True)
-    updated_at = models.DateTimeField(_('更新时间'), auto_now=True)
-
-    class Meta:
-        verbose_name = _('商品分类')
-        verbose_name_plural = _('商品分类')
-        ordering = ['rank', 'id']
-
-    def __str__(self):
-        return f"{self.name} ({self.name_en})"
-
-    def clean(self):
-        if self.parent:
-            # 检查层级深度
-            current_parent = self.parent
-            depth = 1
-            while current_parent.parent:
-                depth += 1
-                current_parent = current_parent.parent
-                
-            if depth >= 7:
-                raise ValidationError(_('分类层级不能超过7级'))
-                
-            if self.level <= self.parent.level:
-                raise ValidationError(_('子类目的层级必须大于父类目的层级'))
-        elif self.level != 1:
-            raise ValidationError(_('没有父类目时，必须是一级分类'))
-
-class SPU(models.Model):
-    """SPU商品"""
-    PRODUCT_TYPE_CHOICES = [
-        ('math_design', '设计款'),
-        ('ready_made', '现货款'),
-        ('raw_material', '材料'),
-        ('packing_material', '包材'),
-    ]
-
-    PRODUCTION_PROCESS_CHOICES = [
-        ('metal', '金属类'),
+class ProductionCategory(models.Model):
+    """生产类目"""
+    CATEGORY_CHOICES = (
         ('resin', '树脂类'),
+        ('metal', '金属类'),
+        ('ceramic', '陶瓷类'),
         ('plush', '毛绒类'),
-        ('plastic', '塑料类'),
-    ]
+    )
 
-    code = models.CharField(_('SPU编码'), max_length=50, unique=True)
-    name = models.CharField(_('SPU名称'), max_length=100)
-    product_type = models.CharField(_('产品类型'), max_length=20, choices=PRODUCT_TYPE_CHOICES)
-    remark = models.TextField(_('备注'), blank=True, null=True)
-    sales_channel = models.CharField(_('销售渠道'), max_length=20, blank=True, null=True)
-    design_elements = models.CharField(
-        _('设计元素'),
+    code = models.CharField(_('类目编码'), max_length=20, unique=True)
+    name = models.CharField(_('类目名称'), max_length=50)
+    category_type = models.CharField(
+        _('类目类型'),
         max_length=20,
-        blank=True,
-        null=True,
-        help_text=_('设计元素，如：蝴蝶')
+        choices=CATEGORY_CHOICES
     )
-    production_process = models.CharField(
-        _('生产工艺'),
-        max_length=20,
-        choices=PRODUCTION_PROCESS_CHOICES,
-        blank=True,
-        null=True,
-        help_text=_('主要生产工艺')
+    description = models.TextField(_('类目描述'), blank=True)
+    is_active = models.BooleanField(_('是否启用'), default=True)
+    created_at = models.DateTimeField(_('创建时间'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('更新时间'), auto_now=True)
+
+    class Meta:
+        verbose_name = _('生产类目')
+        verbose_name_plural = _('生产类目')
+        ordering = ['code']
+
+    def __str__(self):
+        return f"{self.get_category_type_display()} - {self.name}"
+
+
+class ProductionOrder(models.Model):
+    """生产任务订单"""
+    ORDER_TYPE_CHOICES = (
+        ('trial', '试产'),
+        ('mass', '量产'),
     )
-    brand = models.ForeignKey(
-        Brand,
-        verbose_name=_('品牌'),
-        on_delete=models.SET_NULL,
+    
+    STATUS_CHOICES = (
+        ('pending', '待处理'),
+        ('in_progress', '进行中'),
+        ('completed', '已完成'),
+        ('cancelled', '已取消'),
+    )
+
+    PRIORITY_CHOICES = (
+        (0, '紧急'),
+        (1, '高'),
+        (2, '中'),
+        (3, '低'),
+    )
+
+    code = models.CharField(_('任务编号'), max_length=50, unique=True)
+    product = models.ForeignKey(
+        Product,
+        verbose_name=_('产品'),
+        on_delete=models.PROTECT,
+        related_name='production_orders',
         null=True,
         blank=True
     )
     category = models.ForeignKey(
-        Category,
-        verbose_name=_('商品分类'),
-        on_delete=models.PROTECT
-    )
-    poc = models.ForeignKey(
-        User,
-        verbose_name=_('产品专员'),
-        on_delete=models.SET_NULL,
+        ProductionCategory,
+        verbose_name=_('生产类目'),
+        on_delete=models.PROTECT,
+        related_name='orders',
         null=True,
         blank=True
     )
-    is_active = models.BooleanField(_('是否启用'), default=True)
+    order_type = models.CharField(
+        _('生产类型'),
+        max_length=10,
+        choices=ORDER_TYPE_CHOICES
+    )
+    quantity = models.IntegerField(_('计划数量'), validators=[MinValueValidator(1)])
+    priority = models.IntegerField(
+        _('优先级'),
+        choices=PRIORITY_CHOICES,
+        default=2
+    )
+    priority_order = models.IntegerField(
+        _('优先级排序'),
+        default=0,
+        help_text=_('数字越小优先级越高')
+    )
+    status = models.CharField(
+        _('状态'),
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending'
+    )
+    planned_start_date = models.DateField(_('计划开始日期'))
+    planned_end_date = models.DateField(_('计划结束日期'))
+    actual_start_date = models.DateField(_('实际开始日期'), null=True, blank=True)
+    actual_end_date = models.DateField(_('实际结束日期'), null=True, blank=True)
+    manager = models.ForeignKey(
+        User,
+        verbose_name=_('生产主管'),
+        on_delete=models.PROTECT,
+        related_name='managed_orders'
+    )
+    description = models.TextField(_('任务描述'), blank=True)
+    technical_requirements = models.TextField(_('技术要求'), blank=True)
+    quality_requirements = models.TextField(_('质量要求'), blank=True)
+    created_by = models.ForeignKey(
+        User,
+        verbose_name=_('创建人'),
+        on_delete=models.PROTECT,
+        related_name='created_orders'
+    )
     created_at = models.DateTimeField(_('创建时间'), auto_now_add=True)
     updated_at = models.DateTimeField(_('更新时间'), auto_now=True)
 
     class Meta:
-        verbose_name = _('SPU')
-        verbose_name_plural = _('SPU列表')
-        ordering = ['-created_at']
+        verbose_name = _('生产任务')
+        verbose_name_plural = _('生产任务')
+        ordering = ['priority_order', '-created_at']
 
     def __str__(self):
-        return f"{self.code} - {self.name}"
+        product_name = self.product.name if self.product else "未关联产品"
+        return f"{self.code} - {product_name}"
 
-class Product(models.Model):
-    """SKU商品"""
-    PLATING_PROCESS_CHOICES = (
-        ('none', '无电镀'),
-        ('18k_gold', '18K金'),
-        ('18k_silver', '18K银'),
+
+class ProductionStep(models.Model):
+    """生产步骤"""
+    STEP_CHOICES = (
+        ('3d_modeling', '3D建模'),
+        ('model_printing', '模型打印'),
+        ('casting', '铸造'),
+        ('plating', '电镀'),
+        ('post_processing', '后处理'),
     )
 
-    code = models.CharField(_('SKU编码'), max_length=50, unique=True)
-    name = models.CharField(_('SKU名称'), max_length=100)
-    spu = models.ForeignKey(
-        SPU,
-        verbose_name=_('所属SPU'),
+    STATUS_CHOICES = (
+        ('pending', '待处理'),
+        ('in_progress', '进行中'),
+        ('completed', '已完成'),
+        ('on_hold', '已暂停'),
+    )
+
+    order = models.ForeignKey(
+        ProductionOrder,
+        verbose_name=_('生产任务'),
         on_delete=models.CASCADE,
-        related_name='products'
+        related_name='steps'
     )
-    material = models.CharField(_('材质'), max_length=50)
-    color = models.CharField(_('颜色'), max_length=50)
-    plating_process = models.CharField(
-        _('电镀工艺'),
+    step_type = models.CharField(
+        _('步骤类型'),
         max_length=20,
-        choices=PLATING_PROCESS_CHOICES,
-        default='none'
+        choices=STEP_CHOICES
     )
-    surface_treatment = models.CharField(
-        _('表面处理'),
+    name = models.CharField(
+        _('步骤名称'),
         max_length=100,
+        help_text=_('可以是预定义步骤，也可以是自定义步骤名称')
+    )
+    sequence = models.IntegerField(_('步骤顺序'))
+    description = models.TextField(_('步骤描述'), blank=True)
+    status = models.CharField(
+        _('状态'),
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending'
+    )
+    planned_duration = models.DurationField(_('计划耗时'))
+    actual_duration = models.DurationField(_('实际耗时'), null=True, blank=True)
+    start_time = models.DateTimeField(_('开始时间'), null=True, blank=True)
+    end_time = models.DateTimeField(_('结束时间'), null=True, blank=True)
+    operator = models.ForeignKey(
+        User,
+        verbose_name=_('操作员'),
+        on_delete=models.PROTECT,
+        related_name='operated_steps'
+    )
+    quality_check_result = models.TextField(_('质检结果'), blank=True)
+    notes = models.TextField(_('备注'), blank=True)
+    attachments = models.JSONField(
+        _('附件列表'),
+        default=list,
+        blank=True,
+        help_text=_('步骤相关的文件URL列表，如3D文件、图纸等')
+    )
+    created_at = models.DateTimeField(_('创建时间'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('更新时间'), auto_now=True)
+
+    class Meta:
+        verbose_name = _('生产步骤')
+        verbose_name_plural = _('生产步骤')
+        ordering = ['order', 'sequence']
+        unique_together = ['order', 'sequence']
+
+    def __str__(self):
+        return f"{self.order.code} - {self.get_step_type_display() or self.name}"
+
+    def save(self, *args, **kwargs):
+        if self.step_type and not self.name:
+            self.name = self.get_step_type_display()
+        super().save(*args, **kwargs)
+
+
+class ProductionComment(models.Model):
+    """生产评论"""
+    COMMENT_TYPE_CHOICES = (
+        ('general', '普通评论'),
+        ('issue', '问题报告'),
+        ('solution', '解决方案'),
+    )
+
+    order = models.ForeignKey(
+        ProductionOrder,
+        verbose_name=_('生产任务'),
+        on_delete=models.CASCADE,
+        related_name='comments'
+    )
+    step = models.ForeignKey(
+        ProductionStep,
+        verbose_name=_('生产步骤'),
+        on_delete=models.CASCADE,
+        related_name='comments',
         null=True,
         blank=True
     )
-    weight = models.DecimalField(
-        _('重量(g)'),
-        max_digits=10,
-        decimal_places=2,
-        null=True,
-        blank=True
+    comment_type = models.CharField(
+        _('评论类型'),
+        max_length=20,
+        choices=COMMENT_TYPE_CHOICES,
+        default='general'
     )
-    length = models.IntegerField(_('长(mm)'), null=True, blank=True)
-    width = models.IntegerField(_('宽(mm)'), null=True, blank=True)
-    height = models.IntegerField(_('高(mm)'), null=True, blank=True)
-    other_dimensions = models.CharField(
-        _('其他尺寸'),
-        max_length=25,
-        null=True,
-        blank=True
-    )
-    suppliers_list = models.TextField(_('供应商列表'), default='[]', blank=True)
-    main_image = models.ImageField(
-        _('主图'),
-        upload_to=product_image_path,
-        null=True,
-        blank=True
-    )
+    content = models.TextField(_('评论内容'))
     images = models.JSONField(
         _('图片列表'),
         default=list,
         blank=True,
-        help_text=_('存储多张图片的URL列表')
+        help_text=_('评论相关的图片URL列表')
     )
-    is_reviewed = models.BooleanField(_('是否已审核'), default=False)
-    is_active = models.BooleanField(_('是否启用'), default=True)
+    author = models.ForeignKey(
+        User,
+        verbose_name=_('评论人'),
+        on_delete=models.PROTECT,
+        related_name='production_comments'
+    )
+    parent = models.ForeignKey(
+        'self',
+        verbose_name=_('父评论'),
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='replies'
+    )
     created_at = models.DateTimeField(_('创建时间'), auto_now_add=True)
     updated_at = models.DateTimeField(_('更新时间'), auto_now=True)
 
     class Meta:
-        verbose_name = _('SKU')
-        verbose_name_plural = _('SKU列表')
-        ordering = ['-created_at']
+        verbose_name = _('生产评论')
+        verbose_name_plural = _('生产评论')
+        ordering = ['created_at']
 
     def __str__(self):
-        return f"{self.code} - {self.name}" 
+        return f"{self.order.code} - {self.author.username} - {self.created_at}" 

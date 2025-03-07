@@ -63,6 +63,26 @@ const router = createRouter({
           name: 'Profile',
           component: () => import('@/views/profile/index.vue'),
           meta: { title: '个人信息', icon: 'user' }
+        },
+        {
+          path: '/production',
+          name: 'Production',
+          redirect: '/production/orders',
+          meta: { title: '生产管理' },
+          children: [
+            {
+              path: 'orders',
+              name: 'ProductionOrders',
+              component: () => import('@/views/production/orders.vue'),
+              meta: { title: '生产任务' }
+            },
+            {
+              path: 'orders/:id',
+              name: 'ProductionOrderDetail',
+              component: () => import('@/views/production/order-detail.vue'),
+              meta: { title: '任务详情' }
+            }
+          ]
         }
       ]
     }

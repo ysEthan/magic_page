@@ -159,6 +159,11 @@
             </div>
           </template>
         </el-table-column>
+        <el-table-column label="生产主管" width="120">
+          <template #default="{ row }">
+            <span>{{ row.manager_info?.last_name || row.manager_info?.username || '-' }}</span>
+          </template>
+        </el-table-column>
         <el-table-column label="产品信息" width="180">
           <template #default="{ row }">
             <template v-if="row.product_info">
@@ -232,7 +237,6 @@
       >
         <!-- 基本信息 -->
         <div class="form-section">
-          <div class="section-title">基本信息</div>
           <el-row :gutter="20">
             <el-col :span="12">
               <el-form-item label="任务编号" prop="code">
@@ -291,7 +295,7 @@
                   <el-option
                     v-for="item in managerOptions"
                     :key="item.id"
-                    :label="item.username"
+                    :label="item.last_name || item.username"
                     :value="item.id"
                   />
                 </el-select>
@@ -302,7 +306,6 @@
 
         <!-- 任务配置 -->
         <div class="form-section">
-          <div class="section-title">任务配置</div>
           <el-row :gutter="20">
             <el-col :span="8">
               <el-form-item label="任务类型" prop="order_type">
@@ -391,7 +394,6 @@
 
         <!-- 任务详情 -->
         <div class="form-section">
-          <div class="section-title">任务详情</div>
           <el-form-item label="任务描述" prop="description">
             <el-input
               v-model="orderForm.description"
@@ -422,7 +424,6 @@
 
         <!-- 附件信息 -->
         <div class="form-section">
-          <div class="section-title">附件信息</div>
           <el-form-item label="主图">
             <el-upload
               class="image-upload"
@@ -588,6 +589,7 @@ const getList = async () => {
   loading.value = true
   try {
     const { count, results } = await getOrderList(queryParams.value)
+    console.log('任务列表:', results)  // 添加日志输出
     orderList.value = results
     total.value = count
   } catch (error) {
@@ -684,12 +686,26 @@ const handleProductSearch = async (query) => {
 const getManagerOptions = async () => {
   try {
     const { results } = await getUserList({
-      page_size: 100,  // 获取足够多的用户
-      is_active: true  // 只获取启用的用户
+      is_staff: true,
+      page_size: 100,  // 获取更多数据
+      ordering: 'username'  // 按用户名排序
     })
+    console.log('管理员列表:', results)
+    if (!results || results.length === 0) {
+      console.warn('未获取到管理员数据')
+      return
+    }
     managerOptions.value = results
+    // 检查数据结构
+    console.log('第一个管理员数据:', {
+      id: results[0].id,
+      username: results[0].username,
+      last_name: results[0].last_name,
+      is_staff: results[0].is_staff
+    })
   } catch (error) {
-    ElMessage.error('获取主管列表失败')
+    console.error('获取管理员列表失败:', error)
+    ElMessage.error('获取管理员列表失败')
   }
 }
 
@@ -976,15 +992,6 @@ onMounted(() => {
     padding: 20px;
     background-color: #f8f9fa;
     border-radius: 4px;
-    
-    .section-title {
-      font-size: 16px;
-      font-weight: bold;
-      color: #303133;
-      margin-bottom: 16px;
-      padding-left: 8px;
-      border-left: 4px solid #409EFF;
-    }
     
     &:last-child {
       margin-bottom: 0;

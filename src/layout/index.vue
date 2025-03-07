@@ -3,7 +3,7 @@
     <el-container>
       <el-aside width="200px">
         <div class="logo">
-          <span>ERP System</span>
+          <span>Magic ERP</span>
         </div>
         <el-menu
           :default-active="route.path"
@@ -78,7 +78,7 @@
           <div class="header-right">
             <el-dropdown @command="handleCommand">
               <span class="user-info">
-                {{ userStore.userInfo?.username }}
+                {{ userStore.userInfo?.last_name }}
                 <el-icon><CaretBottom /></el-icon>
               </span>
               <template #dropdown>

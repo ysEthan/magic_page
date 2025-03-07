@@ -183,6 +183,9 @@ Authorization: Bearer <access_token>
     "quality_requirements": "string",
     "main_image": "file",
     "attachments": ["string"]
+
+
+    
   }
   ```
 

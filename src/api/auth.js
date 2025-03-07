@@ -4,7 +4,10 @@ export function getUserList(params) {
   return request({
     url: '/api/auth/users/',
     method: 'get',
-    params
+    params: {
+      ...params,
+      is_active: true  // 只获取激活的用户
+    }
   })
 }
 

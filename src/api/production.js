@@ -1,6 +1,6 @@
 import request from '@/utils/request'
 
-// 生产任务相关接口
+// 获取生产任务列表
 export function getOrderList(params) {
   return request({
     url: '/api/production/orders/',
@@ -9,6 +9,7 @@ export function getOrderList(params) {
   })
 }
 
+// 创建生产任务
 export function createOrder(data) {
   return request({
     url: '/api/production/orders/',
@@ -17,6 +18,7 @@ export function createOrder(data) {
   })
 }
 
+// 更新生产任务
 export function updateOrder(id, data) {
   return request({
     url: `/api/production/orders/${id}/`,
@@ -25,6 +27,7 @@ export function updateOrder(id, data) {
   })
 }
 
+// 删除生产任务
 export function deleteOrder(id) {
   return request({
     url: `/api/production/orders/${id}/`,
@@ -32,11 +35,21 @@ export function deleteOrder(id) {
   })
 }
 
+// 更新生产任务状态
 export function updateOrderStatus(id, status) {
   return request({
-    url: `/api/production/orders/${id}/update_status/`,
-    method: 'post',
+    url: `/api/production/orders/${id}/status/`,
+    method: 'patch',
     data: { status }
+  })
+}
+
+// 获取生产类目列表
+export function getCategoryList(params) {
+  return request({
+    url: '/api/production/categories/',
+    method: 'get',
+    params
   })
 }
 

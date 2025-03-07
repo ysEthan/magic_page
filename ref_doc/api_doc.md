@@ -581,7 +581,12 @@
         "steps": ["生产步骤列表..."],
         "comments": ["评论列表..."],
         "created_at": "datetime",
-        "updated_at": "datetime"
+        "updated_at": "datetime",
+        "main_image": "string",  // 主图文件路径
+        "main_image_url": "string",  // 主图完整URL
+        "attachments": [  // 附件URL列表
+          "string"
+        ],
       }
     ]
   }
@@ -605,9 +610,70 @@
     "manager": "integer",
     "description": "string",
     "technical_requirements": "string",
-    "quality_requirements": "string"
+    "quality_requirements": "string",
+    "main_image": "file",  // 可选，主图文件
+    "attachments": [  // 可选，附件URL列表
+      "string"
+    ]
   }
   ```
+
+#### 2.3 更新任务状态
+- **接口**: `/api/production/orders/{id}/update_status/`
+- **方法**: `POST`
+- **权限**: 需要认证
+- **请求参数**:
+  ```json
+  {
+    "status": "string"  // pending/in_progress/completed/cancelled
+  }
+  ```
+
+#### 2.4 更新优先级排序
+- **接口**: `/api/production/orders/{id}/update_priority_order/`
+- **方法**: `POST`
+- **权限**: 需要认证
+- **请求参数**:
+  ```json
+  {
+    "priority_order": "integer"  // 数字越小优先级越高
+  }
+  ```
+- **响应**:
+  ```json
+  {
+    "status": "success",
+    "priority_order": "integer"
+  }
+  ```
+
+#### 2.5 上传任务主图
+- **接口**: `/api/production/orders/{id}/upload_image/`
+- **方法**: `POST`
+- **权限**: 需要认证
+- **Content-Type**: `multipart/form-data`
+- **请求参数**:
+  ```json
+  {
+    "main_image": "file"  // 图片文件
+  }
+  ```
+- **响应**:
+  ```json
+  {
+    "status": "success",
+    "main_image_url": "string"  // 图片完整URL
+  }
+  ```
+- **错误响应**:
+  ```json
+  {
+    "error": "string"  // 请选择要上传的图片/不支持的图片格式/图片大小超过限制
+  }
+  ```
+- **文件限制**:
+  - 支持格式：JPEG、PNG、GIF
+  - 最大大小：5MB
 
 ### 3. 生产步骤管理 (Steps)
 
@@ -758,3 +824,47 @@ Authorization: Bearer <access_token>
 - 403: 权限不足
 - 404: 资源不存在
 - 500: 服务器内部错误
+
+### 文件上传说明
+
+1. 创建/更新任务时上传图片
+   - 使用 `multipart/form-data` 格式
+   - 可以同时上传图片和其他字段
+   - 示例请求：
+     ```http
+     POST /api/production/orders/
+     Content-Type: multipart/form-data
+
+     {
+       "code": "string",
+       "main_image": (binary_file),
+       "attachments": ["url1", "url2"],
+       // ... 其他字段
+     }
+     ```
+
+2. 单独更新任务主图
+   - 使用专门的上传接口
+   - 只需要传图片文件
+   - 示例请求：
+     ```http
+     POST /api/production/orders/{id}/upload_image/
+     Content-Type: multipart/form-data
+
+     {
+       "main_image": (binary_file)
+     }
+     ```
+
+3. 附件管理
+   - attachments 字段存储文件URL列表
+   - 支持在创建/更新任务时设置
+   - 格式示例：
+     ```json
+     {
+       "attachments": [
+         "http://example.com/file1.pdf",
+         "http://example.com/file2.dwg"
+       ]
+     }
+     ```

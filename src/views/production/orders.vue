@@ -52,18 +52,19 @@
         :data="orderList"
         style="width: 100%"
       >
-        <el-table-column prop="code" label="任务编号" width="120" />
-        <el-table-column prop="description" label="任务描述" width="140" show-overflow-tooltip />
-        <el-table-column label="优先级" width="120">
+        <el-table-column label="主图" width="100">
           <template #default="{ row }">
-            <div class="priority-info">
-              <el-tag size="small" :type="getPriorityType(row.priority)">
-                {{ row.priority_display }}
-              </el-tag>
-              <span class="priority-order">({{ row.priority_order }})</span>
-            </div>
+            <el-image
+              v-if="row.main_image_url"
+              :src="row.main_image_url"
+              :preview-src-list="[row.main_image_url]"
+              fit="cover"
+              class="table-image"
+            />
+            <el-icon v-else><Picture /></el-icon>
           </template>
         </el-table-column>
+        <el-table-column prop="code" label="任务编号" width="120" />
         <el-table-column label="属性" width="150">
           <template #default="{ row }">
             <div class="property-info">
@@ -74,11 +75,20 @@
                 </el-tag>
               </div>
               <div class="property-item">
-                <span class="label">状态：</span>
-                <el-tag size="small" :type="getStatusType(row.status)">
-                  {{ row.status_display }}
-                </el-tag>
+                <span class="label">类目：</span>
+                <span>{{ row.category_info?.name || '-' }}</span>
               </div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="description" label="任务描述" width="140" show-overflow-tooltip />
+        <el-table-column label="优先级" width="120">
+          <template #default="{ row }">
+            <div class="priority-info">
+              <el-tag size="small" :type="getPriorityType(row.priority)">
+                {{ row.priority_display }}
+              </el-tag>
+              <span class="priority-order">({{ row.priority_order }})</span>
             </div>
           </template>
         </el-table-column>
@@ -155,23 +165,24 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="任务编号" prop="code">
-              <el-input v-model="orderForm.code" placeholder="请输入任务编号" />
+              <el-input
+                v-model="orderForm.code"
+                disabled
+                placeholder="系统自动生成"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="产品" prop="product">
+            <el-form-item label="生产类目" prop="category">
               <el-select
-                v-model="orderForm.product"
-                placeholder="请选择产品"
-                filterable
-                remote
-                :remote-method="handleProductSearch"
-                :loading="productLoading"
+                v-model="orderForm.category"
+                placeholder="请选择生产类目"
+                clearable
               >
                 <el-option
-                  v-for="item in productOptions"
+                  v-for="item in categoryOptions"
                   :key="item.id"
-                  :label="`${item.code} - ${item.name}`"
+                  :label="item.name"
                   :value="item.id"
                 />
               </el-select>
@@ -263,6 +274,23 @@
               />
             </el-form-item>
           </el-col>
+          <el-col :span="12">
+            <el-form-item label="主图">
+              <el-upload
+                class="image-upload"
+                :show-file-list="false"
+                accept="image/jpeg,image/png,image/gif"
+                :before-upload="beforeImageUpload"
+                @change="handleImageChange"
+              >
+                <img v-if="imageUrl" :src="imageUrl" class="preview-image" />
+                <el-button v-else type="primary">点击上传</el-button>
+                <template #tip>
+                  <div class="el-upload__tip">只能上传 jpg/png/gif 文件，且不超过 5MB</div>
+                </template>
+              </el-upload>
+            </el-form-item>
+          </el-col>
         </el-row>
         
         <el-form-item label="技术要求" prop="technical_requirements">
@@ -303,11 +331,27 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { CaretBottom, View, Edit, SetUp, Delete } from '@element-plus/icons-vue'
-import { getOrderList, createOrder, updateOrder, deleteOrder, updateOrderStatus } from '@/api/production'
+import { CaretBottom, View, Edit, SetUp, Delete, Picture } from '@element-plus/icons-vue'
+import { 
+  getOrderList, 
+  createOrder, 
+  updateOrder, 
+  deleteOrder, 
+  updateOrderStatus,
+  getCategoryList 
+} from '@/api/production'
 import { getSKUList } from '@/api/product'
 import { getUserList } from '@/api/auth'
 import { useUserStore } from '@/stores/user'
+
+// 日期格式化方法
+const formatDate = (date) => {
+  const d = date || new Date()
+  const year = d.getFullYear().toString().substr(-2)
+  const month = (d.getMonth() + 1).toString().padStart(2, '0')
+  const day = d.getDate().toString().padStart(2, '0')
+  return year + month + day
+}
 
 // 查询参数
 const queryParams = ref({
@@ -317,7 +361,7 @@ const queryParams = ref({
   status: '',
   page: 1,
   page_size: 10,
-  ordering: 'priority,-priority_order'  // 先按优先级升序（紧急->低），再按排序优先级倒序
+  ordering: 'priority,-priority_order'
 })
 
 // 数据列表
@@ -332,8 +376,9 @@ const orderFormRef = ref()
 
 // 表单数据
 const orderForm = ref({
-  code: '',
+  code: 'D' + formatDate() + '-' + Math.floor(1000 + Math.random() * 9000),  // 现在可以使用 formatDate
   product: null,
+  category: null,
   order_type: 'mass',
   quantity: 1,
   priority: 2,
@@ -341,17 +386,15 @@ const orderForm = ref({
   manager: null,
   planned_start_date: '',
   planned_end_date: '',
-  technical_requirements: null,
-  quality_requirements: null,
-  description: null
+  technical_requirements: '',
+  quality_requirements: '',
+  description: '',
+  main_image: null,
+  main_image_url: ''
 })
 
 // 表单校验规则
 const rules = {
-  code: [
-    { required: true, message: '请输入任务编号', trigger: 'blur' },
-    { min: 3, max: 50, message: '长度在 3 到 50 个字符', trigger: 'blur' }
-  ],
   order_type: [
     { required: true, message: '请选择任务类型', trigger: 'change' }
   ],
@@ -360,8 +403,7 @@ const rules = {
     { type: 'number', min: 1, message: '数量必须大于0', trigger: 'blur' }
   ],
   priority: [
-    { required: true, message: '请选择优先级', trigger: 'change' },
-    { type: 'number', message: '优先级必须是数字', trigger: 'change' }
+    { required: true, message: '请选择优先级', trigger: 'change' }
   ],
   priority_order: [
     { required: true, message: '请输入排序优先级', trigger: 'blur' },
@@ -394,6 +436,9 @@ const productLoading = ref(false)
 
 // 主管选项
 const managerOptions = ref([])
+
+// 类目选项
+const categoryOptions = ref([])
 
 // 获取优先级标签类型
 const getPriorityType = (priority) => {
@@ -527,9 +572,20 @@ const getManagerOptions = async () => {
   }
 }
 
+// 获取类目列表
+const getCategoryOptions = async () => {
+  try {
+    const { results } = await getCategoryList()
+    categoryOptions.value = results
+  } catch (error) {
+    ElMessage.error('获取生产类目列表失败')
+  }
+}
+
 // 新增任务
 const handleAdd = () => {
   dialogTitle.value = '新建任务'
+  orderForm.value.code = 'D' + formatDate() + '-' + Math.floor(1000 + Math.random() * 9000)
   dialogVisible.value = true
 }
 
@@ -543,21 +599,64 @@ const handleEdit = (row) => {
 // 获取用户store
 const userStore = useUserStore()
 
+// 图片预览
+const imageUrl = ref('')
+
+// 图片上传前的验证
+const beforeImageUpload = (file) => {
+  const isImage = /^image\/(jpeg|png|gif)$/.test(file.type)
+  const isLt5M = file.size / 1024 / 1024 < 5
+
+  if (!isImage) {
+    ElMessage.error('上传图片只能是 JPG/PNG/GIF 格式!')
+    return false
+  }
+  if (!isLt5M) {
+    ElMessage.error('上传图片大小不能超过 5MB!')
+    return false
+  }
+  return true
+}
+
+// 处理图片变化
+const handleImageChange = (file) => {
+  const isValid = beforeImageUpload(file.raw)
+  if (!isValid) return
+
+  // 预览图片
+  imageUrl.value = URL.createObjectURL(file.raw)
+  // 保存文件对象，等表单提交时一起上传
+  orderForm.value.main_image = file.raw
+}
+
 // 提交表单
 const handleSubmit = async () => {
   try {
     await orderFormRef.value.validate()
     
-    // 格式化日期
-    const formData = {
-      ...orderForm.value,
-      planned_start_date: orderForm.value.planned_start_date ? new Date(orderForm.value.planned_start_date).toISOString().split('T')[0] : null,
-      planned_end_date: orderForm.value.planned_end_date ? new Date(orderForm.value.planned_end_date).toISOString().split('T')[0] : null,
-      created_at: new Date().toISOString(),
-      created_by: userStore.userInfo.id
-    }
+    // 使用 FormData 处理文件上传
+    const formData = new FormData()
     
-    console.log('提交的表单数据:', formData)
+    // 添加基本字段
+    Object.keys(orderForm.value).forEach(key => {
+      if (key === 'main_image' && orderForm.value.main_image) {
+        formData.append('main_image', orderForm.value.main_image)
+      } else if (key !== 'main_image_url' && orderForm.value[key] != null) {
+        // 对于日期类型的字段特殊处理
+        if (key === 'planned_start_date' || key === 'planned_end_date') {
+          if (orderForm.value[key]) {
+            formData.append(key, new Date(orderForm.value[key]).toISOString().split('T')[0])
+          }
+        } else {
+          formData.append(key, orderForm.value[key])
+        }
+      }
+    })
+    
+    // 添加创建者信息
+    if (!orderForm.value.id) {  // 只在创建时添加
+      formData.append('created_by', userStore.userInfo.id)
+    }
     
     if (orderForm.value.id) {
       await updateOrder(orderForm.value.id, formData)
@@ -585,9 +684,11 @@ const handleSubmit = async () => {
 // 重置表单
 const resetForm = () => {
   orderFormRef.value?.resetFields()
+  imageUrl.value = ''  // 清除预览图
   Object.assign(orderForm.value, {
-    code: '',
+    code: 'D' + formatDate() + '-' + Math.floor(1000 + Math.random() * 9000),
     product: null,
+    category: null,
     order_type: 'mass',
     quantity: 1,
     priority: 2,
@@ -595,15 +696,18 @@ const resetForm = () => {
     manager: null,
     planned_start_date: '',
     planned_end_date: '',
-    technical_requirements: null,
-    quality_requirements: null,
-    description: null
+    technical_requirements: '',
+    quality_requirements: '',
+    description: '',
+    main_image: null,
+    main_image_url: ''
   })
 }
 
 onMounted(() => {
   getList()
   getManagerOptions()
+  getCategoryOptions()
 })
 </script>
 
@@ -649,6 +753,27 @@ onMounted(() => {
       .el-tag {
         margin-left: 2px;
       }
+    }
+  }
+
+  .table-image {
+    width: 60px;
+    height: 60px;
+    border-radius: 4px;
+  }
+
+  .image-upload {
+    .preview-image {
+      width: 100px;
+      height: 100px;
+      border-radius: 4px;
+      object-fit: cover;
+    }
+    
+    .el-upload__tip {
+      font-size: 12px;
+      color: #909399;
+      margin-top: 4px;
     }
   }
 }

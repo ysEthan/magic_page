@@ -62,6 +62,7 @@
               <span>生产管理</span>
             </template>
             <el-menu-item index="/production/orders">生产任务</el-menu-item>
+            <el-menu-item index="/production/reports">生产报表</el-menu-item>
           </el-sub-menu>
         </el-menu>
       </el-aside>

@@ -75,4 +75,22 @@ export function getChannelList(params) {
     method: 'get',
     params
   })
+}
+
+// 获取报表汇总数据
+export function getReportSummary(params) {
+  return request({
+    url: '/api/production/reports/summary/',
+    method: 'get',
+    params
+  })
+}
+
+// 获取报表趋势数据
+export function getReportTrend(params) {
+  return request({
+    url: '/api/production/reports/trend/',
+    method: 'get',
+    params
+  })
 } 

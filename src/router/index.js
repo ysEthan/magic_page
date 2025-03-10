@@ -81,6 +81,12 @@ const router = createRouter({
               name: 'ProductionOrderDetail',
               component: () => import('@/views/production/order-detail.vue'),
               meta: { title: '任务详情' }
+            },
+            {
+              path: 'reports',
+              name: 'ProductionReports',
+              component: () => import('@/views/production/reports.vue'),
+              meta: { title: '生产报表' }
             }
           ]
         }

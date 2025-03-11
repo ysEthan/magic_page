@@ -93,4 +93,56 @@ export function getReportTrend(params) {
     method: 'get',
     params
   })
+}
+
+// 获取生产步骤列表
+export function getStepList(params) {
+  return request({
+    url: '/api/production/steps/',
+    method: 'get',
+    params
+  })
+}
+
+// 创建生产步骤
+export function createStep(data) {
+  return request({
+    url: '/api/production/steps/',
+    method: 'post',
+    data
+  })
+}
+
+// 更新生产步骤
+export function updateStep(id, data) {
+  return request({
+    url: `/api/production/steps/${id}/`,
+    method: 'put',
+    data
+  })
+}
+
+// 删除生产步骤
+export function deleteStep(id) {
+  return request({
+    url: `/api/production/steps/${id}/`,
+    method: 'delete'
+  })
+}
+
+// 更新步骤状态
+export function updateStepStatus(id, status) {
+  return request({
+    url: `/api/production/steps/${id}/update_status/`,
+    method: 'post',
+    data: { status }
+  })
+}
+
+// 获取当前进行中的步骤
+export function getCurrentStep(orderId) {
+  return request({
+    url: `/api/production/orders/${orderId}/current_step/`,
+    method: 'get'
+  })
 } 

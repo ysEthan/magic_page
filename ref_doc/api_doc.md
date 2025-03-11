@@ -1,4 +1,4 @@
-# 生产管理系统 API 文档
+# Magic API 接口文档
 
 ## 通用说明
 
@@ -30,291 +30,253 @@ Authorization: Bearer <access_token>
 - 404: 资源不存在
 - 500: 服务器内部错误
 
-## 生产管理模块 (Production)
+## 一、用户认证模块 (Authentication)
 
-### 1. 生产类目管理 (Categories)
-
-#### 1.1 获取生产类目列表
-- **接口**: `/api/production/categories/`
-- **方法**: `GET`
-- **权限**: 需要认证
-- **查询参数**:
-  - `category_type`: 类目类型 (resin/metal/ceramic/plush)
-  - `is_active`: 是否启用
-  - `search`: 搜索关键词（搜索编码、名称和描述）
-- **响应**:
-  ```json
-  {
-    "count": "integer",
-    "next": "string",
-    "previous": "string",
-    "results": [
-      {
-        "id": "integer",
-        "code": "string",
-        "name": "string",
-        "category_type": "string",
-        "category_type_display": "string",
-        "description": "string",
-        "is_active": "boolean",
-        "created_at": "datetime",
-        "updated_at": "datetime"
-      }
-    ]
-  }
-  ```
-
-#### 1.2 创建生产类目
-- **接口**: `/api/production/categories/`
+### 1. 用户登录
+- **接口**: `/api/auth/token/`
 - **方法**: `POST`
-- **权限**: 需要认证
+- **权限**: 无需认证
 - **请求参数**:
   ```json
   {
-    "code": "string",
-    "name": "string",
-    "category_type": "string",
-    "description": "string",
-    "is_active": "boolean"
+    "username": "string",
+    "password": "string"
+  }
+  ```
+- **响应**:
+  ```json
+  {
+    "access": "string",
+    "refresh": "string"
   }
   ```
 
-### 2. 生产任务管理 (Orders)
+### 2. 刷新令牌
+- **接口**: `/api/auth/token/refresh/`
+- **方法**: `POST`
+- **请求参数**:
+  ```json
+  {
+    "refresh": "string"
+  }
+  ```
+- **响应**:
+  ```json
+  {
+    "access": "string"
+  }
+  ```
 
-#### 2.1 获取生产任务列表
-- **接口**: `/api/production/orders/`
+### 3. 获取用户信息
+- **接口**: `/api/auth/users/profile/`
 - **方法**: `GET`
 - **权限**: 需要认证
+- **响应**:
+  ```json
+  {
+    "id": "integer",
+    "username": "string",
+    "email": "string",
+    "phone": "string",
+    "department": "string",
+    "position": "string",
+    "is_active": "boolean",
+    "first_name": "string",
+    "last_name": "string"
+  }
+  ```
+
+## 二、商品管理模块 (Products)
+
+### 1. 品牌管理 (Brands)
+#### 1.1 获取品牌列表
+- **接口**: `/api/products/brands/`
+- **方法**: `GET`
 - **查询参数**:
-  - `order_type`: 生产类型 (trial/mass)
-  - `status`: 状态 (pending/in_progress/completed/cancelled)
-  - `priority`: 优先级 (0/1/2/3)
-  - `category`: 类目ID
-  - `product`: 产品ID
-  - `manager`: 主管用户ID
-  - `created_by`: 创建人用户ID
-  - `min_planned_start_date`: 最小计划开始日期
-  - `max_planned_start_date`: 最大计划开始日期
-  - `min_created_at`: 最小创建时间
-  - `max_created_at`: 最大创建时间
+  - `is_active`: 是否启用
   - `search`: 搜索关键词
 - **响应**:
   ```json
   {
     "count": "integer",
-    "next": "string",
-    "previous": "string",
     "results": [
       {
         "id": "integer",
-        "code": "string",
-        "product": "integer",
-        "product_info": {
-          "id": "integer",
-          "code": "string",
-          "name": "string"
-        },
-        "category": "integer",
-        "category_info": {
-          "id": "integer",
-          "code": "string",
-          "name": "string",
-          "category_type": "string",
-          "category_type_display": "string"
-        },
-        "channel": "integer",
-        "channel_info": {
-          "id": "integer",
-          "code": "string",
-          "name": "string"
-        },
-        "order_type": "string",
-        "order_type_display": "string",
-        "quantity": "integer",
-        "priority": "integer",
-        "priority_display": "string",
-        "priority_order": "integer",
-        "status": "string",
-        "status_display": "string",
-        "planned_start_date": "date",
-        "planned_end_date": "date",
-        "actual_start_date": "date",
-        "actual_end_date": "date",
-        "manager": "integer",
-        "manager_info": "object",
+        "name": "string",
         "description": "string",
-        "technical_requirements": "string",
-        "quality_requirements": "string",
-        "created_by": "integer",
-        "created_by_info": "object",
-        "created_at": "datetime",
-        "updated_at": "datetime",
-        "main_image": "string",
-        "main_image_url": "string",
-        "attachments": ["string"],
-        "steps": ["object"],
-        "comments": ["object"]
+        "logo_url": "string",
+        "is_active": "boolean"
       }
     ]
   }
   ```
 
-#### 2.2 创建生产任务
+### 2. 商品分类 (Categories)
+#### 2.1 获取分类列表
+- **接口**: `/api/products/categories/`
+- **方法**: `GET`
+- **查询参数**:
+  - `level`: 分类层级
+  - `is_active`: 是否启用
+  - `search`: 搜索关键词
+
+### 3. SPU管理
+#### 3.1 获取SPU列表
+- **接口**: `/api/products/spus/`
+- **方法**: `GET`
+- **查询参数**:
+  - `product_type`: 产品类型
+  - `brand`: 品牌ID
+  - `category`: 分类ID
+  - `is_active`: 是否启用
+  - `search`: 搜索关键词
+
+### 4. SKU管理
+#### 4.1 获取SKU列表
+- **接口**: `/api/products/products/`
+- **方法**: `GET`
+- **查询参数**:
+  - `spu`: SPU ID
+  - `material`: 材质
+  - `is_reviewed`: 是否已审核
+  - `is_active`: 是否启用
+  - `search`: 搜索关键词
+
+## 三、生产管理模块 (Production)
+
+### 1. 生产类目管理 (Categories)
+#### 1.1 获取生产类目列表
+- **接口**: `/api/production/categories/`
+- **方法**: `GET`
+- **查询参数**:
+  - `category_type`: 类目类型
+  - `is_active`: 是否启用
+  - `search`: 搜索关键词
+
+### 2. 生产任务管理 (Orders)
+#### 2.1 获取任务列表
 - **接口**: `/api/production/orders/`
-- **方法**: `POST`
-- **权限**: 需要认证
-- **Content-Type**: `multipart/form-data`
-- **请求参数**:
+- **方法**: `GET`
+- **查询参数**:
+  - `order_type`: 生产类型
+  - `status`: 状态
+  - `priority`: 优先级
+  - `manager`: 主管ID
+  - `search`: 搜索关键词
+
+#### 2.2 获取下一个任务编号
+- **接口**: `/api/production/orders/next_id/`
+- **方法**: `GET`
+- **响应**:
   ```json
   {
-    "code": "string",
-    "product": "integer",
-    "category": "integer",
-    "channel": "integer",
-    "order_type": "string",
-    "quantity": "integer",
-    "priority": "integer",
-    "priority_order": "integer",
-    "planned_start_date": "date",
-    "planned_end_date": "date",
-    "manager": "integer",
-    "description": "string",
-    "technical_requirements": "string",
-    "quality_requirements": "string",
-    "main_image": "file",
-    "attachments": ["string"]
-
-
-    
+    "code": "string"  // 例如：D2403070001
   }
   ```
 
-#### 2.3 更新任务状态
-- **接口**: `/api/production/orders/{id}/update_status/`
-- **方法**: `POST`
-- **权限**: 需要认证
-- **请求参数**:
-  ```json
-  {
-    "status": "string"  // pending/in_progress/completed/cancelled
-  }
-  ```
-
-#### 2.4 更新优先级排序
-- **接口**: `/api/production/orders/{id}/update_priority_order/`
-- **方法**: `POST`
-- **权限**: 需要认证
-- **请求参数**:
-  ```json
-  {
-    "priority_order": "integer"  // 数字越小优先级越高
-  }
-  ```
-
-#### 2.5 上传任务主图
+#### 2.3 上传任务主图
 - **接口**: `/api/production/orders/{id}/upload_image/`
 - **方法**: `POST`
-- **权限**: 需要认证
 - **Content-Type**: `multipart/form-data`
 - **请求参数**:
   ```json
   {
-    "main_image": "file"  // 图片文件
+    "main_image": "file"
+  }
+  ```
+
+### 3. 生产步骤管理 (Steps)
+#### 3.1 获取步骤列表
+- **接口**: `/api/production/steps/`
+- **方法**: `GET`
+- **权限**: 需要认证
+- **查询参数**:
+  - `order`: 任务ID
+  - `step_name`: 步骤名称
+    - `3d_modeling`: 3D建模
+    - `model_printing`: 模型打印
+    - `casting`: 铸造
+    - `plating`: 电镀
+    - `post_processing`: 后处理
+  - `status`: 状态
+    - `pending`: 待处理
+    - `in_progress`: 进行中
+    - `completed`: 已完成
+    - `on_hold`: 已暂停
+  - `operator`: 操作员ID
+  - `contractor`: 承接方
+  - `search`: 搜索关键词（搜索描述、承接方）
+- **响应**:
+  ```json
+  {
+    "count": "integer",
+    "results": [
+      {
+        "id": "integer",
+        "order": "integer",
+        "step_name": "string",        // 步骤名称代码
+        "step_name_display": "string", // 步骤名称显示文本
+        "sequence": "integer",
+        "description": "string",
+        "contractor": "string",
+        "status": "string",           // 状态代码
+        "status_display": "string",    // 状态显示文本
+        "planned_duration": "string",
+        "actual_duration": "string",
+        "start_time": "datetime",
+        "end_time": "datetime",
+        "operator": "integer",
+        "operator_info": {
+          "id": "integer",
+          "username": "string",
+          "first_name": "string",
+          "last_name": "string"
+        },
+        "quality_check_result": "string",
+        "notes": "string",
+        "attachments": ["string"]
+      }
+    ]
+  }
+  ```
+
+#### 3.2 更新步骤状态
+- **接口**: `/api/production/steps/{id}/update_status/`
+- **方法**: `POST`
+- **权限**: 需要认证
+- **请求参数**:
+  ```json
+  {
+    "status": "string"  // pending/in_progress/completed/on_hold
   }
   ```
 - **响应**:
   ```json
   {
     "status": "success",
-    "main_image_url": "string"
+    "old_status": "string",
+    "new_status": "string",
+    "end_time": "datetime"
   }
   ```
-
-### 3. 生产步骤管理 (Steps)
-
-#### 3.1 获取生产步骤列表
-- **接口**: `/api/production/steps/`
-- **方法**: `GET`
-- **权限**: 需要认证
-- **查询参数**:
-  - `order`: 生产任务ID
-  - `step_type`: 步骤类型
-  - `status`: 状态
-  - `operator`: 操作员ID
-  - `search`: 搜索关键词
-- **响应**:
-  ```json
-  {
-    "count": "integer",
-    "results": [
-      {
-        "id": "integer",
-        "order": "integer",
-        "step_type": "string",
-        "step_type_display": "string",
-        "name": "string",
-        "sequence": "integer",
-        "description": "string",
-        "status": "string",
-        "status_display": "string",
-        "planned_duration": "string",
-        "actual_duration": "string",
-        "start_time": "datetime",
-        "end_time": "datetime",
-        "operator": "integer",
-        "operator_info": "object",
-        "quality_check_result": "string",
-        "notes": "string",
-        "attachments": ["string"],
-        "created_at": "datetime",
-        "updated_at": "datetime"
-      }
-    ]
-  }
-  ```
+- **说明**:
+  - 当状态更新为 completed 时，会自动设置结束时间
+  - 状态只能在预定义的选项中选择
 
 ### 4. 生产评论管理 (Comments)
-
 #### 4.1 获取评论列表
 - **接口**: `/api/production/comments/`
 - **方法**: `GET`
-- **权限**: 需要认证
 - **查询参数**:
-  - `order`: 生产任务ID
-  - `step`: 生产步骤ID
+  - `order`: 任务ID
+  - `step`: 步骤ID
   - `comment_type`: 评论类型
   - `author`: 评论人ID
-  - `search`: 搜索关键词
-- **响应**:
-  ```json
-  {
-    "count": "integer",
-    "results": [
-      {
-        "id": "integer",
-        "order": "integer",
-        "step": "integer",
-        "comment_type": "string",
-        "comment_type_display": "string",
-        "content": "string",
-        "images": ["string"],
-        "author": "integer",
-        "author_info": "object",
-        "parent": "integer",
-        "replies": ["object"],
-        "created_at": "datetime",
-        "updated_at": "datetime"
-      }
-    ]
-  }
-  ```
 
-### 5. 来源渠道管理 (Channels)
-
+### 5. 生产渠道管理 (Channels)
 #### 5.1 获取渠道列表
 - **接口**: `/api/production/channels/`
 - **方法**: `GET`
-- **权限**: 需要认证
 - **查询参数**:
   - `is_active`: 是否启用
   - `search`: 搜索关键词
@@ -322,8 +284,6 @@ Authorization: Bearer <access_token>
   ```json
   {
     "count": "integer",
-    "next": "string",
-    "previous": "string",
     "results": [
       {
         "id": "integer",
@@ -336,16 +296,73 @@ Authorization: Bearer <access_token>
   }
   ```
 
-#### 5.2 创建渠道
-- **接口**: `/api/production/channels/`
-- **方法**: `POST`
+### 6. 生产报表 (Reports)
+
+#### 6.1 获取报表汇总数据
+- **接口**: `/api/production/reports/summary/`
+- **方法**: `GET`
 - **权限**: 需要认证
-- **请求参数**:
+- **响应**:
   ```json
   {
-    "code": "string",
-    "name": "string",
-    "description": "string",
-    "is_active": "boolean"
+    "total_orders": "integer",      // 任务总数
+    "completion_rate": "number",    // 完成率（百分比）
+    "total_planned": "integer",     // 计划生产总量
+    "total_completed": "integer",   // 实际完成总量
+    "status_distribution": {        // 状态分布
+      "pending": "integer",         // 待处理数量
+      "in_progress": "integer",     // 进行中数量
+      "completed": "integer",       // 已完成数量
+      "cancelled": "integer"        // 已取消数量
+    }
   }
   ```
+- **说明**:
+  - completion_rate: 完成率 = 已完成任务数 / 总任务数 * 100
+  - total_planned: 所有任务的计划生产数量之和
+  - total_completed: 已完成任务的实际生产数量之和
+
+#### 6.2 获取趋势数据
+- **接口**: `/api/production/reports/trend/`
+- **方法**: `GET`
+- **权限**: 需要认证
+- **查询参数**:
+  - `type`: 趋势类型
+    - `daily`: 按日统计（默认）
+    - `weekly`: 按周统计
+    - `monthly`: 按月统计
+  - `start_date`: 开始日期 (YYYY-MM-DD)
+  - `end_date`: 结束日期 (YYYY-MM-DD)
+  - `category`: 可选的类目ID，用于筛选特定类目的数据
+- **响应**:
+  ```json
+  {
+    "dates": [                      // 日期列表
+      "2024-03-01",
+      "2024-03-02",
+      "2024-03-03"
+    ],
+    "new_orders": [                 // 新建任务数量列表
+      5,                           // 2024-03-01新建了5个任务
+      8,                           // 2024-03-02新建了8个任务
+      3                            // 2024-03-03新建了3个任务
+    ],
+    "completed_orders": [           // 完成任务数量列表
+      4,                           // 2024-03-01完成了4个任务
+      6,                           // 2024-03-02完成了6个任务
+      7                            // 2024-03-03完成了7个任务
+    ]
+  }
+  ```
+- **错误响应**:
+  ```json
+  {
+    "error": "无效的日期格式"      // 当日期格式不正确时
+  }
+  ```
+- **说明**:
+  - 日期范围内的每一天都会返回数据，如果某天没有数据则返回0
+  - 按周统计时，日期为每周的第一天
+  - 按月统计时，日期为每月的第一天
+  - 新建任务数：根据任务的创建时间统计
+  - 完成任务数：根据任务的完成时间（更新时间）统计 

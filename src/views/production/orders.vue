@@ -174,10 +174,29 @@
           </template>
         </el-table-column>
         <el-table-column prop="quantity" label="计划数量" width="100" />
-        <el-table-column label="计划日期" width="200">
+        <el-table-column label="计划日期" width="240">
           <template #default="{ row }">
-            <div>开始：{{ row.planned_start_date }}</div>
-            <div>结束：{{ row.planned_end_date }}</div>
+            <div class="date-info">
+              <div>开始: {{ row.planned_start_date }}</div>
+              <div>结束: {{ row.planned_end_date }}</div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="当前步骤" min-width="200">
+          <template #default="{ row }">
+            <div v-if="row.latest_step" class="step-info">
+              <span class="step-name">{{ row.latest_step.step_name_display }}</span>
+              <el-tag 
+                size="small" 
+                :type="getStatusTagType(row.latest_step.status)"
+              >
+                {{ row.latest_step.status_display }}
+              </el-tag>
+              <span v-if="row.latest_step.contractor" class="step-contractor">
+                {{ row.latest_step.contractor }}
+              </span>
+            </div>
+            <span v-else class="no-step">暂无步骤</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
@@ -461,7 +480,8 @@ import {
   updateOrderStatus,
   getCategoryList,
   getNextOrderCode,
-  getChannelList
+  getChannelList,
+  getCurrentStep
 } from '@/api/production'
 import { getSKUList } from '@/api/product'
 import { getUserList } from '@/api/auth'
@@ -597,13 +617,40 @@ const getChannelTagType = (channelId) => {
   return types[channelId] || 'info'
 }
 
+// 获取状态标签类型
+const getStatusTagType = (status) => {
+  const typeMap = {
+    pending: 'info',
+    in_progress: 'primary',
+    completed: 'success',
+    cancelled: 'danger'
+  }
+  return typeMap[status] || 'info'
+}
+
 // 获取列表数据
 const getList = async () => {
   loading.value = true
   try {
     const { count, results } = await getOrderList(queryParams.value)
-    console.log('任务列表:', results)  // 添加日志输出
-    orderList.value = results
+    // 获取每个任务的当前步骤
+    const ordersWithSteps = await Promise.all(
+      results.map(async (order) => {
+        try {
+          const currentStep = await getCurrentStep(order.id)
+          return {
+            ...order,
+            latest_step: currentStep.message ? null : currentStep
+          }
+        } catch (error) {
+          return {
+            ...order,
+            latest_step: null
+          }
+        }
+      })
+    )
+    orderList.value = ordersWithSteps
     total.value = count
   } catch (error) {
     ElMessage.error('获取生产任务列表失败')
@@ -1043,6 +1090,27 @@ onMounted(() => {
     :deep(.el-date-editor) {
       width: 100%;
     }
+  }
+
+  .step-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    
+    .step-name {
+      font-weight: 500;
+    }
+    
+    .step-contractor {
+      color: #606266;
+      font-size: 13px;
+    }
+  }
+  
+  .no-step {
+    color: #909399;
+    font-size: 13px;
+    font-style: italic;
   }
 }
 </style> 

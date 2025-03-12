@@ -184,18 +184,26 @@
         </el-table-column>
         <el-table-column label="当前步骤" min-width="200">
           <template #default="{ row }">
-            <div v-if="row.latest_step" class="step-info">
-              <span class="step-name">{{ row.latest_step.step_name_display }}</span>
-              <el-tag 
-                size="small" 
-                :type="getStatusTagType(row.latest_step.status)"
-              >
-                {{ row.latest_step.status_display }}
-              </el-tag>
-              <span v-if="row.latest_step.contractor" class="step-contractor">
-                {{ row.latest_step.contractor }}
-              </span>
-            </div>
+            <template v-if="row.latest_step">
+              <div class="task-status">
+                <div class="status-name clickable" @click="handleUpdateStatus(row)">
+                  {{ row.status_display }}
+                  <el-icon class="edit-icon"><Edit /></el-icon>
+                </div>
+              </div>
+              <div class="step-info">
+                <span class="step-name">{{ row.latest_step.step_name_display }}</span>
+                <el-tag 
+                  size="small" 
+                  :type="getStatusTagType(row.latest_step.status)"
+                >
+                  {{ row.latest_step.status_display }}
+                </el-tag>
+                <span v-if="row.latest_step.contractor" class="step-contractor">
+                  {{ row.latest_step.contractor }}
+                </span>
+              </div>
+            </template>
             <span v-else class="no-step">暂无步骤</span>
           </template>
         </el-table-column>
@@ -212,9 +220,6 @@
                   </el-dropdown-item>
                   <el-dropdown-item @click="handleEdit(row)">
                     <el-icon><Edit /></el-icon>编辑
-                  </el-dropdown-item>
-                  <el-dropdown-item @click="handleUpdateStatus(row)">
-                    <el-icon><SetUp /></el-icon>更新状态
                   </el-dropdown-item>
                   <el-dropdown-item divided type="danger" @click="handleDelete(row)">
                     <el-icon><Delete /></el-icon>删除
@@ -417,7 +422,7 @@
             <el-input
               v-model="orderForm.description"
               type="textarea"
-              rows="3"
+              :rows="3"
               placeholder="请输入任务描述"
             />
           </el-form-item>
@@ -426,7 +431,7 @@
             <el-input
               v-model="orderForm.technical_requirements"
               type="textarea"
-              rows="3"
+              :rows="3"
               placeholder="请输入技术要求"
             />
           </el-form-item>
@@ -435,7 +440,7 @@
             <el-input
               v-model="orderForm.quality_requirements"
               type="textarea"
-              rows="3"
+              :rows="3"
               placeholder="请输入质量要求"
             />
           </el-form-item>
@@ -463,6 +468,39 @@
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleSubmit">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 状态更新对话框 -->
+    <el-dialog
+      v-model="statusDialogVisible"
+      title="更新状态"
+      width="400px"
+    >
+      <el-form>
+        <el-form-item label="选择状态">
+          <el-select v-model="selectedStatus" placeholder="请选择状态" style="width: 100%">
+            <el-option
+              v-for="item in [
+                { value: 'pending', label: '待处理' },
+                { value: 'in_progress', label: '进行中' },
+                { value: 'completed', label: '已完成' },
+                { value: 'cancelled', label: '已取消' }
+              ]"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            >
+              <el-tag size="small" :type="getStatusType(item.value)">{{ item.label }}</el-tag>
+            </el-option>
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="statusDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmUpdateStatus">确定</el-button>
+        </span>
       </template>
     </el-dialog>
   </div>
@@ -534,31 +572,21 @@ const rules = {
     { required: true, message: '请选择任务类型', trigger: 'change' }
   ],
   quantity: [
-    { required: true, message: '请输入计划数量', trigger: 'blur' },
     { type: 'number', min: 1, message: '数量必须大于0', trigger: 'blur' }
   ],
   priority: [
     { required: true, message: '请选择优先级', trigger: 'change' }
   ],
   priority_order: [
-    { required: true, message: '请输入排序优先级', trigger: 'blur' },
     { type: 'number', min: 0, message: '排序优先级必须大于等于0', trigger: 'blur' }
   ],
-  manager: [
-    { required: true, message: '请选择生产主管', trigger: 'change' }
-  ],
   description: [
-    { required: true, message: '请输入任务描述', trigger: 'blur' },
     { min: 1, max: 500, message: '长度在 1 到 500 个字符', trigger: 'blur' }
   ],
-  planned_start_date: [
-    { required: true, message: '请选择计划开始日期', trigger: 'change' }
-  ],
   planned_end_date: [
-    { required: true, message: '请选择计划结束日期', trigger: 'change' },
     {
       validator: (rule, value, callback) => {
-        if (orderForm.value.planned_start_date && value && value < orderForm.value.planned_start_date) {
+        if (value && orderForm.value.planned_start_date && value < orderForm.value.planned_start_date) {
           callback(new Error('结束日期不能早于开始日期'))
         } else {
           callback()
@@ -581,6 +609,11 @@ const categoryOptions = ref([])
 
 // 渠道选项
 const channelOptions = ref([])
+
+// 状态更新相关
+const statusDialogVisible = ref(false)
+const currentRow = ref(null)
+const selectedStatus = ref('')
 
 // 获取优先级标签类型
 const getPriorityType = (priority) => {
@@ -676,29 +709,25 @@ const resetQuery = () => {
 
 // 更新状态
 const handleUpdateStatus = (row) => {
-  ElMessageBox.prompt('请选择新状态', '更新状态', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    inputType: 'select',
-    inputValue: row.status,
-    inputPlaceholder: '请选择状态',
-    inputPattern: /^(pending|in_progress|completed|cancelled)$/,
-    inputErrorMessage: '无效的状态',
-    inputOptions: [
-      { label: '待处理', value: 'pending' },
-      { label: '进行中', value: 'in_progress' },
-      { label: '已完成', value: 'completed' },
-      { label: '已取消', value: 'cancelled' }
-    ]
-  }).then(async ({ value }) => {
-    try {
-      await updateOrderStatus(row.id, value)
-      ElMessage.success('状态更新成功')
-      getList()
-    } catch (error) {
+  currentRow.value = row
+  selectedStatus.value = row.status
+  statusDialogVisible.value = true
+}
+
+// 确认更新状态
+const confirmUpdateStatus = async () => {
+  try {
+    await updateOrderStatus(currentRow.value.id, { status: selectedStatus.value })
+    ElMessage.success('状态更新成功')
+    statusDialogVisible.value = false
+    getList()
+  } catch (error) {
+    if (error.response?.data?.error) {
+      ElMessage.error(error.response.data.error)
+    } else {
       ElMessage.error('状态更新失败')
     }
-  })
+  }
 }
 
 // 删除操作
@@ -792,6 +821,7 @@ const getChannelOptions = async () => {
 // 新增任务
 const handleAdd = async () => {
   dialogTitle.value = '新建任务'
+  resetForm() // 确保表单被重置
   try {
     const { code } = await getNextOrderCode()
     orderForm.value.code = code
@@ -805,7 +835,7 @@ const handleAdd = async () => {
 // 编辑任务
 const handleEdit = (row) => {
   dialogTitle.value = '编辑任务'
-  Object.assign(orderForm.value, row)
+  orderForm.value = { ...row }  // 使用解构赋值来复制数据
   dialogVisible.value = true
 }
 
@@ -867,15 +897,19 @@ const handleSubmit = async () => {
     
     // 处理日期字段
     if (orderForm.value.planned_start_date) {
-      formFields.planned_start_date = new Date(orderForm.value.planned_start_date).toISOString().split('T')[0]
+      const startDate = new Date(orderForm.value.planned_start_date)
+      formFields.planned_start_date = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`
     }
     if (orderForm.value.planned_end_date) {
-      formFields.planned_end_date = new Date(orderForm.value.planned_end_date).toISOString().split('T')[0]
+      const endDate = new Date(orderForm.value.planned_end_date)
+      formFields.planned_end_date = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`
     }
     
     // 添加所有字段到 FormData
     Object.keys(formFields).forEach(key => {
-      formData.append(key, formFields[key])
+      if (formFields[key] !== null && formFields[key] !== undefined) {
+        formData.append(key, formFields[key])
+      }
     })
     
     // 添加图片文件（如果有）
@@ -883,18 +917,24 @@ const handleSubmit = async () => {
       formData.append('main_image', orderForm.value.main_image)
     }
     
-    // 添加创建者信息
-    if (!orderForm.value.id) {  // 只在创建时添加
+    // 添加创建者信息 - 仅在创建新任务时添加
+    if (!orderForm.value.id) {
       formData.append('created_by', userStore.userInfo.id)
     }
+
+    // 根据是否有 ID 判断是创建还是更新
+    const isEdit = Boolean(orderForm.value.id)
     
-    if (orderForm.value.id) {
+    if (isEdit) {
+      // 编辑模式
       await updateOrder(orderForm.value.id, formData)
       ElMessage.success('更新成功')
     } else {
+      // 创建模式
       await createOrder(formData)
       ElMessage.success('创建成功')
     }
+    
     dialogVisible.value = false
     getList()
   } catch (error) {
@@ -915,11 +955,11 @@ const handleSubmit = async () => {
 const resetForm = () => {
   orderFormRef.value?.resetFields()
   imageUrl.value = ''
-  Object.assign(orderForm.value, {
+  orderForm.value = {
     code: '',
     product: null,
     category: null,
-    channel: null,  // 添加渠道字段重置
+    channel: null,
     order_type: 'trial',
     quantity: 1,
     priority: 1,
@@ -931,8 +971,9 @@ const resetForm = () => {
     quality_requirements: '',
     description: '',
     main_image: null,
-    main_image_url: ''
-  })
+    main_image_url: '',
+    id: null  // 确保重置时清除 id
+  }
 }
 
 onMounted(() => {
@@ -1111,6 +1152,44 @@ onMounted(() => {
     color: #909399;
     font-size: 13px;
     font-style: italic;
+  }
+
+  .task-status {
+    margin-bottom: 8px;
+    font-size: 13px;
+    
+    .status-name {
+      font-weight: bold;
+      color: #303133;
+      
+      &.clickable {
+        cursor: pointer;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 4px;
+        background-color: #f5f7fa;
+        border: 1px dashed transparent;
+        
+        .edit-icon {
+          font-size: 12px;
+          color: #909399;
+          margin-left: 4px;
+        }
+        
+        &:hover {
+          color: #409EFF;
+          background-color: #ecf5ff;
+          border-color: #409EFF;
+          
+          .edit-icon {
+            color: #409EFF;
+          }
+        }
+      }
+    }
   }
 }
 </style> 

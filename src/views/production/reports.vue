@@ -2,17 +2,6 @@
   <div class="reports-container">
     <el-card class="filter-card">
       <el-form :inline="true" :model="queryParams" class="filter-form">
-        <el-form-item label="时间范围">
-          <el-date-picker
-            v-model="dateRange"
-            type="daterange"
-            range-separator="至"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            :shortcuts="dateShortcuts"
-            @change="handleDateChange"
-          />
-        </el-form-item>
         <el-form-item label="生产类目">
           <el-select v-model="queryParams.category" placeholder="请选择类目" clearable>
             <el-option
@@ -22,6 +11,25 @@
               :value="item.id"
             />
           </el-select>
+        </el-form-item>
+        <el-form-item label="步骤状态">
+          <el-select v-model="queryParams.status" placeholder="请选择状态" clearable>
+            <el-option label="待处理" value="pending" />
+            <el-option label="进行中" value="in_progress" />
+            <el-option label="已完成" value="completed" />
+            <el-option label="暂停中" value="on_hold" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="日期范围">
+          <el-date-picker
+            v-model="dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+            @change="handleDateRangeChange"
+          />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="fetchReportData">
@@ -33,6 +41,51 @@
         </el-form-item>
       </el-form>
     </el-card>
+
+    <el-row :gutter="20">
+      <!-- 渠道分布饼图 -->
+      <el-col :span="6">
+        <el-card class="statistics-card">
+          <template #header>
+            <div class="card-header">
+              <span>渠道分布</span>
+              <el-tooltip content="展示不同来源渠道的任务数量分布" placement="top">
+                <el-icon><InfoFilled /></el-icon>
+              </el-tooltip>
+            </div>
+          </template>
+          <div class="chart-container" v-loading="channelChartLoading">
+            <div ref="channelPieChart" style="width: 100%; height: 300px"></div>
+            <div class="total-tasks" v-if="channelTotalTasks > 0">
+              总任务数：{{ channelTotalTasks }}
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+
+      <!-- 优先级分布图 -->
+      <el-col :span="6">
+        <el-card class="statistics-card">
+          <template #header>
+            <div class="card-header">
+              <span>优先级分布</span>
+              <el-tooltip content="展示各生产类目下不同优先级的任务数量分布" placement="top">
+                <el-icon><InfoFilled /></el-icon>
+              </el-tooltip>
+            </div>
+          </template>
+          <div class="chart-container priority-chart" v-loading="priorityChartLoading">
+            <div ref="priorityChart" style="width: 100%; height: 300px"></div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-row :gutter="20">
+    <div>11</div>
+    </el-row>
+
+
 
     <el-row :gutter="20" class="data-cards">
       <el-col :span="6">
@@ -78,71 +131,33 @@
         <el-card shadow="hover" class="data-card">
           <template #header>
             <div class="card-header">
-              <span>任务状态分布</span>
+              <span>任务分布</span>
             </div>
           </template>
           <div ref="statusChartRef" class="chart-container"></div>
         </el-card>
       </el-col>
     </el-row>
-
-    <el-card class="trend-card">
-      <template #header>
-        <div class="card-header">
-          <span>任务趋势</span>
-          <el-radio-group v-model="trendType" size="small" @change="updateTrendChart">
-            <el-radio-button :value="'daily'">日</el-radio-button>
-            <el-radio-button :value="'weekly'">周</el-radio-button>
-            <el-radio-button :value="'monthly'">月</el-radio-button>
-          </el-radio-group>
-        </div>
-      </template>
-      <div ref="trendChartRef" class="chart-container"></div>
-    </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { Search, Refresh } from '@element-plus/icons-vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { Search, Refresh, InfoFilled } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
-import { getCategoryList, getReportSummary, getReportTrend } from '@/api/production'
+import { getCategoryList, getReportSummary, getCategoryPriorityStatistics, getChannelStatistics } from '@/api/production'
 
 // 查询参数
 const queryParams = ref({
   category: null,
+  status: null,
   start_date: null,
   end_date: null
 })
 
-// 日期选择器相关
-const dateRange = ref([])
-const dateShortcuts = [
-  {
-    text: '最近一周',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 3600 * 1000 * 24 * 7)
-      return [start, end]
-    }
-  },
-  {
-    text: '最近一月',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 3600 * 1000 * 24 * 30)
-      return [start, end]
-    }
-  }
-]
-
 // 图表相关
 const statusChartRef = ref(null)
-const trendChartRef = ref(null)
 let statusChart = null
-let trendChart = null
 
 // 数据统计
 const summaryData = ref({
@@ -151,9 +166,6 @@ const summaryData = ref({
   total_planned: 0,
   total_completed: 0
 })
-
-// 趋势图类型
-const trendType = ref('daily')
 
 // 进度条颜色
 const progressColors = [
@@ -167,6 +179,48 @@ const progressColors = [
 // 类目选项
 const categoryOptions = ref([])
 
+// 优先级图表相关
+const priorityChart = ref(null)
+const priorityChartLoading = ref(false)
+let priorityChartInstance = null
+
+// 优先级颜色
+const priorityColors = {
+  P0: '#F56C6C',    // 红色 - P0
+  P1: '#E6A23C',    // 橙色 - P1
+  P2: '#409EFF',    // 蓝色 - P2
+  P3: '#67C23A'     // 绿色 - P3
+}
+
+// 渠道统计相关
+const channelPieChart = ref(null)
+const channelChartLoading = ref(false)
+const channelTotalTasks = ref(0)
+let channelChart = null
+
+// 渠道对应的颜色
+const channelColors = [
+  '#409EFF', // 蓝色
+  '#67C23A', // 绿色
+  '#E6A23C', // 橙色
+  '#F56C6C', // 红色
+  '#909399', // 灰色
+]
+
+// 日期范围
+const dateRange = ref([])
+
+// 处理日期范围变化
+const handleDateRangeChange = (val) => {
+  if (val) {
+    queryParams.value.start_date = val[0]
+    queryParams.value.end_date = val[1]
+  } else {
+    queryParams.value.start_date = null
+    queryParams.value.end_date = null
+  }
+}
+
 // 获取类目列表
 const getCategoryOptions = async () => {
   try {
@@ -177,132 +231,12 @@ const getCategoryOptions = async () => {
   }
 }
 
-// 初始化状态分布图表
-const initStatusChart = () => {
-  statusChart = echarts.init(statusChartRef.value)
-  const option = {
-    tooltip: {
-      trigger: 'item',
-      formatter: '{b}: {c} ({d}%)'
-    },
-    legend: {
-      orient: 'vertical',
-      right: 10,
-      top: 'center'
-    },
-    series: [
-      {
-        type: 'pie',
-        radius: ['40%', '70%'],
-        avoidLabelOverlap: false,
-        itemStyle: {
-          borderRadius: 10,
-          borderColor: '#fff',
-          borderWidth: 2
-        },
-        label: {
-          show: true,
-          position: 'inside',
-          formatter: '{d}%'
-        },
-        labelLine: {
-          show: false
-        },
-        data: []  // 初始化时不设置数据
-      }
-    ]
-  }
-  statusChart.setOption(option)
-}
-
-// 初始化趋势图表
-const initTrendChart = () => {
-  trendChart = echarts.init(trendChartRef.value)
-  const option = {
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'shadow'
-      }
-    },
-    legend: {
-      data: ['新建任务', '完成任务']
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      boundaryGap: true,
-      data: []
-    },
-    yAxis: {
-      type: 'value',
-      minInterval: 1
-    },
-    series: [
-      {
-        type: 'bar',
-        name: '新建任务',
-        emphasis: {
-          focus: 'series'
-        },
-        data: []
-      },
-      {
-        type: 'bar',
-        name: '完成任务',
-        emphasis: {
-          focus: 'series'
-        },
-        data: []
-      }
-    ]
-  }
-  trendChart.setOption(option)
-}
-
-// 更新趋势图表
-const updateTrendChart = () => {
-  fetchReportData()
-}
-
-// 处理日期变化
-const handleDateChange = (val) => {
-  if (val) {
-    // 格式化日期为 YYYY-MM-DD
-    queryParams.value.start_date = val[0].toISOString().split('T')[0]
-    queryParams.value.end_date = val[1].toISOString().split('T')[0]
-  } else {
-    queryParams.value.start_date = null
-    queryParams.value.end_date = null
-  }
-  fetchReportData()
-}
-
 // 获取报表数据
 const fetchReportData = async () => {
-  if (!queryParams.value.start_date || !queryParams.value.end_date) {
-    return
-  }
-
   try {
-    const [summaryRes, trendRes] = await Promise.all([
-      getReportSummary({
-        start_date: queryParams.value.start_date,
-        end_date: queryParams.value.end_date,
-        category: queryParams.value.category
-      }),
-      getReportTrend({
-        type: trendType.value,
-        start_date: queryParams.value.start_date,
-        end_date: queryParams.value.end_date,
+    const summaryRes = await getReportSummary({
         category: queryParams.value.category
       })
-    ])
 
     // 更新汇总数据
     summaryData.value = {
@@ -345,77 +279,427 @@ const fetchReportData = async () => {
         ].filter(item => item.value > 0)  // 只显示有数据的状态
       }]
     })
-
-    // 更新趋势图表
-    trendChart.setOption({
-      xAxis: {
-        data: trendRes.dates || []
-      },
-      series: [
-        {
-          type: 'bar',
-          name: '新建任务',
-          data: (trendRes.new_orders || []).map(Number),
-          itemStyle: { 
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: '#409EFF' },
-              { offset: 1, color: '#a8d4ff' }
-            ])
-          }
-        },
-        {
-          type: 'bar',
-          name: '完成任务',
-          data: (trendRes.completed_orders || []).map(Number),
-          itemStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: '#67C23A' },
-              { offset: 1, color: '#b3e19d' }
-            ])
-          }
-        }
-      ]
-    })
   } catch (error) {
     console.error('获取报表数据失败:', error)
     ElMessage.error('获取报表数据失败')
   }
 }
 
-// 重置查询
+// 初始化状态分布图表
+const initStatusChart = () => {
+  statusChart = echarts.init(statusChartRef.value)
+  const option = {
+    tooltip: {
+      trigger: 'item',
+      formatter: '{b}: {c} ({d}%)'
+    },
+    legend: {
+      orient: 'vertical',
+      right: 10,
+      top: 'center'
+    },
+    series: [
+      {
+        type: 'pie',
+        radius: ['40%', '70%'],
+        avoidLabelOverlap: false,
+        itemStyle: {
+          borderRadius: 10,
+          borderColor: '#fff',
+          borderWidth: 2
+        },
+        label: {
+          show: true,
+          position: 'inside',
+          formatter: '{d}%'
+        },
+        labelLine: {
+          show: false
+        },
+        data: []  // 初始化时不设置数据
+      }
+    ]
+  }
+  statusChart.setOption(option)
+}
+
+// 初始化优先级分布图表
+const initPriorityChart = () => {
+  if (priorityChartInstance) {
+    priorityChartInstance.dispose()
+  }
+  priorityChartInstance = echarts.init(priorityChart.value)
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      },
+      formatter: (params) => {
+        let tooltip = `${params[0].axisValue.split(' (')[0]}<br/>`
+        let total = 0
+        params.forEach(param => {
+          tooltip += `${param.marker}${param.seriesName}：${param.value}<br/>`
+          total += param.value
+        })
+        tooltip += `<br/>总计：${total}`
+        return tooltip
+      }
+    },
+    legend: {
+      data: ['P0', 'P1', 'P2', 'P3'],
+      top: 0,
+      left: 'center'
+    },
+    grid: {
+      left: '0%',
+      right: '1%',
+      top: '40px',
+      bottom: '6%',
+      containLabel: true
+    },
+      xAxis: {
+      type: 'value',
+      name: '任务数量',
+      nameLocation: 'middle',
+      nameGap: 30,
+      axisLabel: {
+        formatter: '{value}'
+      }
+    },
+    yAxis: {
+      type: 'category',
+      data: [],
+      axisLabel: {
+        interval: 0,
+        formatter: (value) => {
+          const parts = value.split('|||')
+          const name = parts[0]
+          const total = parts[1] || 0
+          if (name.length > 12) {
+            return `${name.substring(0, 12)}... (${total})`
+          }
+          return `${name} (${total})`
+        },
+        margin: 16
+      }
+      },
+      series: [
+        {
+        name: 'P0',
+          type: 'bar',
+        stack: 'total',
+        label: {
+          show: true,
+          formatter: (params) => {
+            return params.value > 0 ? params.value : ''
+          }
+        },
+        emphasis: {
+          focus: 'series'
+        },
+          itemStyle: { 
+          color: priorityColors.P0
+        },
+        data: []
+      },
+      {
+        name: 'P1',
+        type: 'bar',
+        stack: 'total',
+        label: {
+          show: true,
+          formatter: (params) => {
+            return params.value > 0 ? params.value : ''
+          }
+        },
+        emphasis: {
+          focus: 'series'
+        },
+        itemStyle: {
+          color: priorityColors.P1
+        },
+        data: []
+      },
+      {
+        name: 'P2',
+          type: 'bar',
+        stack: 'total',
+        label: {
+          show: true,
+          formatter: (params) => {
+            return params.value > 0 ? params.value : ''
+          }
+        },
+        emphasis: {
+          focus: 'series'
+        },
+          itemStyle: {
+          color: priorityColors.P2
+        },
+        data: []
+      },
+      {
+        name: 'P3',
+        type: 'bar',
+        stack: 'total',
+        label: {
+          show: true,
+          formatter: (params) => {
+            return params.value > 0 ? params.value : ''
+          }
+        },
+        emphasis: {
+          focus: 'series'
+        },
+        itemStyle: {
+          color: priorityColors.P3
+        },
+        data: []
+      }
+    ]
+  }
+  priorityChartInstance.setOption(option)
+}
+
+// 获取优先级统计数据
+const getPriorityData = async () => {
+  priorityChartLoading.value = true
+  try {
+    const params = {
+      status: queryParams.value.status
+    }
+
+    const response = await getCategoryPriorityStatistics(params)
+    
+    if (response.data) {
+      // 计算每个类目的总任务数并构建类目标签
+      const categoriesWithTotal = response.data.map(item => {
+        const total = (item.priority_distribution.P0 || 0) +
+                     (item.priority_distribution.P1 || 0) +
+                     (item.priority_distribution.P2 || 0) +
+                     (item.priority_distribution.P3 || 0)
+        return {
+          name: item.category_name,
+          total,
+          distribution: item.priority_distribution
+        }
+      })
+
+      // 按总任务数从少到多排序
+      categoriesWithTotal.sort((a, b) => a.total - b.total)
+      
+      // 构建排序后的类目标签和数据
+      const categories = categoriesWithTotal.map(item => `${item.name}|||${item.total}`)
+      
+      const seriesData = {
+        P0: [],
+        P1: [],
+        P2: [],
+        P3: []
+      }
+
+      categoriesWithTotal.forEach(item => {
+        seriesData.P0.push(item.distribution.P0 || 0)
+        seriesData.P1.push(item.distribution.P1 || 0)
+        seriesData.P2.push(item.distribution.P2 || 0)
+        seriesData.P3.push(item.distribution.P3 || 0)
+      })
+
+      priorityChartInstance.setOption({
+        yAxis: {
+          data: categories
+        },
+        series: [
+          {
+            name: 'P0',
+            data: seriesData.P0
+          },
+          {
+            name: 'P1',
+            data: seriesData.P1
+          },
+          {
+            name: 'P2',
+            data: seriesData.P2
+          },
+          {
+            name: 'P3',
+            data: seriesData.P3
+          }
+        ]
+      })
+    }
+  } catch (error) {
+    console.error('获取优先级统计数据失败:', error)
+    ElMessage.error('获取优先级统计数据失败')
+  } finally {
+    priorityChartLoading.value = false
+  }
+}
+
+// 初始化渠道分布饼图
+const initChannelChart = () => {
+  if (channelChart) {
+    channelChart.dispose()
+  }
+  channelChart = echarts.init(channelPieChart.value)
+  channelChart.setOption({
+    tooltip: {
+      trigger: 'item',
+      formatter: (params) => {
+        return `${params.name}<br/>数量: ${params.value}<br/>占比: ${params.data.percentage.toFixed(1)}%`
+      }
+    },
+    graphic: {
+      type: 'text',
+      left: 'center',
+      top: 'center',
+      style: {
+        text: '0',
+        textAlign: 'center',
+        fill: '#303133',
+        fontSize: 60,
+        fontWeight: 'bold'
+      }
+    },
+    series: [
+      {
+        name: '渠道分布',
+        type: 'pie',
+        radius: ['45%', '80%'],
+        avoidLabelOverlap: true,
+        itemStyle: {
+          borderRadius: 10,
+          borderColor: '#fff',
+          borderWidth: 2
+        },
+        label: {
+          show: true,
+          position: 'outside',
+          formatter: (params) => {
+            const name = params.name.length > 6 ? params.name.substring(0, 6) + '...' : params.name
+            return `${name}:${params.value}`
+          },
+          color: '#606266',
+          fontSize: 11,
+          lineHeight: 12,
+          padding: [0, 0, 0, 0]
+        },
+        labelLine: {
+          show: true,
+          length: 10,
+          length2: 5,
+          smooth: true
+        },
+        emphasis: {
+          label: {
+            show: true,
+            fontSize: 12,
+            fontWeight: 'bold'
+          },
+          itemStyle: {
+            shadowBlur: 10,
+            shadowOffsetX: 0,
+            shadowColor: 'rgba(0, 0, 0, 0.5)'
+          }
+        },
+        data: []
+      }
+    ]
+  })
+}
+
+// 获取渠道统计数据
+const getChannelData = async () => {
+  channelChartLoading.value = true
+  try {
+    const params = {
+      status: queryParams.value.status,
+      start_date: queryParams.value.start_date,
+      end_date: queryParams.value.end_date
+    }
+
+    const response = await getChannelStatistics(params)
+    
+    if (response.data) {
+      const chartData = response.data.map((item, index) => ({
+        name: item.channel_name || '未分类',
+        value: item.count,
+        percentage: item.percentage,
+        itemStyle: {
+          color: channelColors[index % channelColors.length]
+        }
+      }))
+      
+      channelChart.setOption({
+        graphic: {
+          style: {
+            text: `${response.total || 0}`
+          }
+        },
+        series: [{
+          data: chartData
+        }]
+      })
+
+      // 更新图表下方的总数显示
+      channelTotalTasks.value = response.total || 0
+    }
+  } catch (error) {
+    console.error('获取渠道统计数据失败:', error)
+    ElMessage.error('获取渠道统计数据失败')
+  } finally {
+    channelChartLoading.value = false
+  }
+}
+
+// 更新重置查询函数
 const resetQuery = () => {
-  dateRange.value = []
   queryParams.value = {
     category: null,
+    status: null,
     start_date: null,
     end_date: null
   }
+  dateRange.value = []
   fetchReportData()
+  getPriorityData()
+  getChannelData()
 }
 
-// 监听窗口大小变化
+// 更新窗口大小监听
 const handleResize = () => {
   statusChart?.resize()
-  trendChart?.resize()
+  priorityChartInstance?.resize()
+  channelChart?.resize()
 }
+
+// 监听查询参数变化
+watch([
+  () => queryParams.value.status,
+  () => queryParams.value.start_date,
+  () => queryParams.value.end_date
+], () => {
+  getChannelData()
+})
 
 onMounted(() => {
   getCategoryOptions()
   initStatusChart()
-  initTrendChart()
-  // 设置默认时间范围为最近一周
-  const end = new Date()
-  const start = new Date()
-  start.setTime(start.getTime() - 3600 * 1000 * 24 * 7)
-  dateRange.value = [start, end]
-  handleDateChange([start, end])
+  initPriorityChart()
+  initChannelChart()
+  fetchReportData()
+  getPriorityData()
+  getChannelData()
   window.addEventListener('resize', handleResize)
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
   statusChart?.dispose()
-  trendChart?.dispose()
+  priorityChartInstance?.dispose()
+  channelChart?.dispose()
 })
 </script>
 
@@ -476,16 +760,36 @@ onUnmounted(() => {
     }
   }
 
-  .trend-card {
+  .statistics-card {
+    margin-bottom: 20px;
+    height: 380px; // 减小卡片高度
+    
     .card-header {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      gap: 8px;
+      
+      .el-icon {
+        font-size: 16px;
+        color: #909399;
+        cursor: help;
     }
   }
 
   .chart-container {
-    height: 300px;
+      height: 300px; // 减小图表高度
+      
+      &.priority-chart {
+        padding: 0; // 移除内边距
+      }
+
+      .total-tasks {
+        text-align: center;
+        margin-top: 8px;
+        color: #606266;
+        font-size: 14px;
+      }
+    }
   }
 }
 </style> 

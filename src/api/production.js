@@ -36,11 +36,14 @@ export function deleteOrder(id) {
 }
 
 // 更新生产任务状态
-export function updateOrderStatus(id, status) {
+export function updateOrderStatus(id, data) {
+  const formData = new FormData()
+  formData.append('status', data.status)
+  
   return request({
-    url: `/api/production/orders/${id}/status/`,
-    method: 'patch',
-    data: { status }
+    url: `/api/production/orders/${id}/update_status/`,
+    method: 'post',
+    data: formData
   })
 }
 
@@ -144,5 +147,32 @@ export function getCurrentStep(orderId) {
   return request({
     url: `/api/production/orders/${orderId}/current_step/`,
     method: 'get'
+  })
+}
+
+// 获取优先级统计数据
+export function getPriorityStatistics(params) {
+  return request({
+    url: '/api/production/reports/priority_statistics/',
+    method: 'get',
+    params
+  })
+}
+
+// 获取类目优先级统计数据
+export function getCategoryPriorityStatistics(params) {
+  return request({
+    url: '/api/production/reports/category_priority_statistics/',
+    method: 'get',
+    params
+  })
+}
+
+// 获取渠道统计数据
+export function getChannelStatistics(params) {
+  return request({
+    url: '/api/production/reports/channel_statistics/',
+    method: 'get',
+    params
   })
 } 

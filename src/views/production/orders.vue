@@ -835,7 +835,12 @@ const handleAdd = async () => {
 // 编辑任务
 const handleEdit = (row) => {
   dialogTitle.value = '编辑任务'
-  orderForm.value = { ...row }  // 使用解构赋值来复制数据
+  // 复制基本数据
+  orderForm.value = { ...row }
+  // 处理图片预览
+  if (row.main_image_url) {
+    imageUrl.value = row.main_image_url
+  }
   dialogVisible.value = true
 }
 
@@ -912,19 +917,23 @@ const handleSubmit = async () => {
       }
     })
     
-    // 添加图片文件（如果有）
-    if (orderForm.value.main_image) {
+    // 处理图片
+    const isEdit = Boolean(orderForm.value.id)
+    
+    if (orderForm.value.main_image instanceof File) {
+      // 如果有新上传的图片文件
       formData.append('main_image', orderForm.value.main_image)
+    } else if (!isEdit) {
+      // 如果是新建模式且没有上传图片，发送空字符串
+      formData.append('main_image', '')
     }
+    // 如果是编辑模式且没有新上传的图片，不发送图片字段，保持原有图片
     
     // 添加创建者信息 - 仅在创建新任务时添加
-    if (!orderForm.value.id) {
+    if (!isEdit) {
       formData.append('created_by', userStore.userInfo.id)
     }
 
-    // 根据是否有 ID 判断是创建还是更新
-    const isEdit = Boolean(orderForm.value.id)
-    
     if (isEdit) {
       // 编辑模式
       await updateOrder(orderForm.value.id, formData)

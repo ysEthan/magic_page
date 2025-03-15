@@ -1,3 +1,13 @@
+cd /code/magic_page
+git clone https://github.com/ysEthan/magic_page.git
+
+cd /code/magic/magic_page
+git fetch origin && git checkout -b f06_production_step origin/f06_production_step
+
+
+
+
+
 "00 创建项目============================="
 npm create vue@3.14.1
 --关联远程仓库
@@ -45,7 +55,50 @@ git add . && git commit -m "b04_product" && git push
 
 
 "05 生产管理============================="
-git checkout -b b05_production
-git add . && git commit -m "b05_production" && git push
+git checkout -b f05_production
+git add . && git commit -m "production" && git push
 
-git add . && git commit -m "test" && git checkout b04_product && git branch -D b05_production
+git add . && git commit -m "test" && git checkout b04_product && git branch -D f05_production
+
+
+我们已经完成了商品管理模块，现在，让我们继续实现生产管理。
+后端功能已经完成，请参考API
+模型文件
+视图文件，
+帮我实现前段相关功能，首先，创建一个任务管理的视图
+
+新增/编辑任务的表单
+生产步骤的管理
+任务状态的流转
+评论功能
+
+调整列表，
+把属性列中的优先级，单独放一列
+
+
+"06 生产步骤============================="
+git checkout -b f06_production_step
+git add . && git commit -m "production_step" && git push
+
+接下来让我们完善生产步骤管理
+首先需要实现添加步骤的功能,请参考一下API文档，模型文件，文件，实现前端功能，
+再任务详情页面的按钮，添加实际的功能
+
+调整任务详情的页面展示
+1，各类信息分模块展示
+2，调整紧凑一些
+
+添加步骤时报错了，帮我排查解决
+
+
+
+"07 采购管理 ============================="
+git checkout -b f07_procurement
+git add . && git commit -m "procurement" && git push
+
+接下来让我们继续实现采购管理模块。
+后端功能已经完成，,请参考一下API文档，模型文件，视图文件，序列化器文件实现前端功能，
+
+
+接下来让我们继续实现库存管理模块。
+后端功能已经完成，,请参考一下API文档，模型文件，视图文件，序列化器文件实现前端功能，

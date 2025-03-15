@@ -21,6 +21,11 @@ service.interceptors.request.use(
   }
 )
 
+// 标记是否正在刷新token
+let isRefreshing = false
+// 存储等待token刷新的请求
+let requests = []
+
 // 响应拦截器
 service.interceptors.response.use(
   response => {
@@ -29,24 +34,44 @@ service.interceptors.response.use(
   async error => {
     const userStore = useUserStore()
     
-    if (error.response?.status === 401) {
-      // token过期，尝试刷新token
-      if (userStore.refreshToken) {
-        try {
-          const { access } = await service.post('/api/auth/token/refresh/', {
-            refresh: userStore.refreshToken
-          })
-          userStore.setToken(access)
-          // 重试原请求
-          return service(error.config)
-        } catch (refreshError) {
-          // 刷新token失败，退出登录
+    if (error.response?.status === 401 && error.config.url !== '/api/auth/token/refresh/') {
+      if (!isRefreshing) {
+        isRefreshing = true
+        
+        if (userStore.refreshToken) {
+          try {
+            const { access } = await service.post('/api/auth/token/refresh/', {
+              refresh: userStore.refreshToken
+            })
+            userStore.setToken(access)
+            isRefreshing = false
+            
+            // 重试所有等待的请求
+            requests.forEach(cb => cb(access))
+            requests = []
+            
+            // 重试当前请求
+            error.config.headers['Authorization'] = `Bearer ${access}`
+            return service(error.config)
+          } catch (refreshError) {
+            isRefreshing = false
+            userStore.logout()
+            router.push('/login')
+            return Promise.reject(refreshError)
+          }
+        } else {
+          isRefreshing = false
           userStore.logout()
           router.push('/login')
         }
       } else {
-        userStore.logout()
-        router.push('/login')
+        // 将请求添加到等待队列
+        return new Promise(resolve => {
+          requests.push(token => {
+            error.config.headers['Authorization'] = `Bearer ${token}`
+            resolve(service(error.config))
+          })
+        })
       }
     }
     return Promise.reject(error)

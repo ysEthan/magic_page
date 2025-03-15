@@ -1,323 +1,210 @@
 from django.db import models
-from django.utils.translation import gettext_lazy as _
-from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
-from apps.products.models import Product
-from datetime import datetime
+from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 User = get_user_model()
 
-class ProductionCategory(models.Model):
-    """生产类目"""
-    CATEGORY_CHOICES = (
-        ('resin', '树脂类'),
-        ('metal', '金属类'),
-        ('ceramic', '陶瓷类'),
-        ('plush', '毛绒类'),
-    )
-
-    code = models.CharField(_('类目编码'), max_length=20, unique=True)
-    name = models.CharField(_('类目名称'), max_length=50)
-    category_type = models.CharField(
-        _('类目类型'),
-        max_length=20,
-        choices=CATEGORY_CHOICES
-    )
-    description = models.TextField(_('类目描述'), blank=True)
-    is_active = models.BooleanField(_('是否启用'), default=True)
-    created_at = models.DateTimeField(_('创建时间'), auto_now_add=True)
-    updated_at = models.DateTimeField(_('更新时间'), auto_now=True)
-
-    class Meta:
-        verbose_name = _('生产类目')
-        verbose_name_plural = _('生产类目')
-        ordering = ['code']
-
-    def __str__(self):
-        return f"{self.get_category_type_display()} - {self.name}"
-
-
-class ProductionChannel(models.Model):
-    """来源渠道"""
-    code = models.CharField(_('渠道编码'), max_length=20, unique=True)
-    name = models.CharField(_('渠道名称'), max_length=50)
-    description = models.TextField(_('渠道描述'), blank=True)
-    is_active = models.BooleanField(_('是否启用'), default=True)
-    created_at = models.DateTimeField(_('创建时间'), auto_now_add=True)
-    updated_at = models.DateTimeField(_('更新时间'), auto_now=True)
-
-    class Meta:
-        verbose_name = _('来源渠道')
-        verbose_name_plural = _('来源渠道')
-        ordering = ['code']
-
-    def __str__(self):
-        return f"{self.name}"
-
-
-class ProductionOrder(models.Model):
-    """生产任务订单"""
-    ORDER_TYPE_CHOICES = (
-        ('trial', '试产'),
-        ('mass', '量产'),
-    )
-    
-    STATUS_CHOICES = (
-        ('pending', '待处理'),
-        ('in_progress', '进行中'),
-        ('completed', '已完成'),
-        ('cancelled', '已取消'),
-    )
-
-    PRIORITY_CHOICES = (
-        (0, '紧急'),
-        (1, '高'),
-        (2, '中'),
-        (3, '低'),
-    )
-
-    code = models.CharField(_('任务编号'), max_length=50, unique=True)
-    product = models.ForeignKey(
-        Product,
-        verbose_name=_('产品'),
-        on_delete=models.PROTECT,
-        related_name='production_orders',
-        null=True,
-        blank=True
-    )
-    category = models.ForeignKey(
-        ProductionCategory,
-        verbose_name=_('生产类目'),
-        on_delete=models.PROTECT,
-        related_name='orders',
-        null=True,
-        blank=True
-    )
-    order_type = models.CharField(
-        _('生产类型'),
-        max_length=10,
-        choices=ORDER_TYPE_CHOICES
-    )
-    quantity = models.IntegerField(_('计划数量'), validators=[MinValueValidator(1)])
-    priority = models.IntegerField(
-        _('优先级'),
-        choices=PRIORITY_CHOICES,
-        default=2
-    )
-    priority_order = models.IntegerField(
-        _('优先级排序'),
-        default=0,
-        help_text=_('数字越小优先级越高')
-    )
-    status = models.CharField(
-        _('状态'),
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default='pending'
-    )
-    planned_start_date = models.DateField(_('计划开始日期'))
-    planned_end_date = models.DateField(_('计划结束日期'))
-    actual_start_date = models.DateField(_('实际开始日期'), null=True, blank=True)
-    actual_end_date = models.DateField(_('实际结束日期'), null=True, blank=True)
+class Warehouse(models.Model):
+    """仓库模型"""
+    warehouse_code = models.CharField(max_length=50, unique=True, verbose_name='仓库编码')
+    warehouse_name = models.CharField(max_length=100, verbose_name='仓库名称')
+    location = models.CharField(max_length=200, verbose_name='仓库地址')
     manager = models.ForeignKey(
         User,
-        verbose_name=_('生产主管'),
-        on_delete=models.PROTECT,
-        related_name='managed_orders'
-    )
-    description = models.TextField(_('任务描述'), blank=True)
-    technical_requirements = models.TextField(_('技术要求'), blank=True)
-    quality_requirements = models.TextField(_('质量要求'), blank=True)
-    created_by = models.ForeignKey(
-        User,
-        verbose_name=_('创建人'),
-        on_delete=models.PROTECT,
-        related_name='created_orders'
-    )
-    created_at = models.DateTimeField(_('创建时间'), auto_now_add=True)
-    updated_at = models.DateTimeField(_('更新时间'), auto_now=True)
-    main_image = models.ImageField(
-        _('主图'),
-        upload_to='production/orders/%Y/%m',
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        help_text=_('任务相关的主要图片')
+        related_name='managed_warehouses',
+        verbose_name='仓库管理员'
     )
-    attachments = models.JSONField(
-        _('附件列表'),
-        default=list,
-        blank=True,
-        help_text=_('任务相关的文件URL列表，如设计文件、参考图等')
-    )
-    channel = models.ForeignKey(
-        ProductionChannel,
-        verbose_name=_('来源渠道'),
-        on_delete=models.PROTECT,
-        related_name='orders',
-        null=True,
-        blank=True
-    )
+    contact_phone = models.CharField(max_length=20, blank=True, null=True, verbose_name='联系电话')
+    remark = models.TextField(blank=True, null=True, verbose_name='备注')
+    status = models.BooleanField(default=True, verbose_name='状态')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
     class Meta:
-        verbose_name = _('生产任务')
-        verbose_name_plural = _('生产任务')
-        ordering = ['priority_order', '-created_at']
+        db_table = 'storage_warehouse'
+        verbose_name = '仓库'
+        verbose_name_plural = '仓库列表'
+        ordering = ['warehouse_code']
 
     def __str__(self):
-        product_name = self.product.name if self.product else "未关联产品"
-        return f"{self.code} - {product_name}"
+        return f"{self.warehouse_code} - {self.warehouse_name}"
 
-    @staticmethod
-    def generate_next_code():
-        """生成下一个任务编号
-        格式：D + YYMMDD + 4位序号（基于表ID）
-        示例：D2403070001
-        """
-        today = datetime.now()
-        date_part = today.strftime('%y%m%d')  # 240307
-        
-        # 获取最大ID
-        last_id = ProductionOrder.objects.all().order_by('-id').values_list('id', flat=True).first()
-        
-        if last_id is not None:
-            next_number = last_id + 1
-        else:
-            next_number = 1
-            
-        # 格式化为：D + 日期 + 4位数字（使用ID）
-        return f"D{date_part}-{next_number:04d}"  # 例如：D2403070001
-
-
-class ProductionStep(models.Model):
-    """生产步骤"""
-    STEP_NAME_CHOICES = (
-        ('3d_modeling', '3D建模'),
-        ('model_printing', '模型打印'),
-        ('casting', '铸造'),
-        ('plating', '电镀'),
-        ('post_processing', '后处理'),
-    )
-
-    STATUS_CHOICES = (
-        ('pending', '待处理'),
-        ('in_progress', '进行中'),
-        ('completed', '已完成'),
-        ('on_hold', '已暂停'),
-    )
-
-    order = models.ForeignKey(
-        ProductionOrder,
-        verbose_name=_('生产任务'),
+class Inventory(models.Model):
+    """库存记录模型，每个入库批次对应一条记录"""
+    warehouse = models.ForeignKey(
+        Warehouse,
         on_delete=models.CASCADE,
-        related_name='steps'
+        related_name='inventories',
+        verbose_name='所属仓库'
     )
-    step_name = models.CharField(
-        _('步骤名称'),
+    product = models.ForeignKey(
+        'products.Product',
+        on_delete=models.CASCADE,
+        related_name='inventories',
+        verbose_name='商品'
+    )
+    batch_code = models.CharField(max_length=50, unique=True, verbose_name='批次编号')
+    quantity = models.IntegerField(
+        validators=[MinValueValidator(0)],
+        verbose_name='剩余数量'
+    )
+    unit_cost = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name='单位成本',
+        help_text='入库时的单位成本金额',
+        default=0
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+
+    class Meta:
+        db_table = 'storage_inventory'
+        verbose_name = '库存'
+        verbose_name_plural = '库存列表'
+        ordering = ['created_at']  # 按创建时间正序排序，用于FIFO
+
+    def __str__(self):
+        return f"{self.batch_code} - {self.product.code} ({self.quantity})"
+
+    @property
+    def is_empty(self):
+        """判断批次是否已空"""
+        return self.quantity <= 0
+
+class StockIn(models.Model):
+    """入库记录"""
+    STOCK_IN_TYPE_CHOICES = [
+        ('purchase', '采购入库'),
+        ('return', '退货入库'),
+        ('transfer', '调拨入库'),
+        ('other', '其他入库'),
+    ]
+
+    stock_in_code = models.CharField(max_length=50, unique=True, verbose_name='入库单号')
+    warehouse = models.ForeignKey(
+        Warehouse,
+        on_delete=models.PROTECT,
+        related_name='stock_ins',
+        verbose_name='入库仓库'
+    )
+    product = models.ForeignKey(
+        'products.Product',
+        on_delete=models.PROTECT,
+        related_name='stock_ins',
+        verbose_name='商品'
+    )
+    inventory = models.OneToOneField(
+        Inventory,
+        on_delete=models.PROTECT,
+        related_name='stock_in',
+        verbose_name='库存批次'
+    )
+    stock_in_type = models.CharField(
         max_length=20,
-        choices=STEP_NAME_CHOICES
+        choices=STOCK_IN_TYPE_CHOICES,
+        verbose_name='入库类型'
     )
-    sequence = models.IntegerField(_('步骤顺序'))
-    description = models.TextField(_('步骤描述'), blank=True)
-    status = models.CharField(
-        _('状态'),
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default='pending'
+    quantity = models.IntegerField(
+        validators=[MinValueValidator(1)],
+        verbose_name='入库数量'
     )
-    contractor = models.CharField(
-        _('承接方'), 
-        max_length=100, 
-        null=True, 
+    unit_cost = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name='单位成本',
+        help_text='入库时的单位成本金额',
+        default=0
+    )
+    source_order = models.CharField(
+        max_length=50,
+        null=True,
         blank=True,
-        help_text=_('步骤的执行承接方，如外协厂商名称')
+        verbose_name='来源单号'
     )
-    planned_duration = models.DurationField(_('计划耗时'))
-    actual_duration = models.DurationField(_('实际耗时'), null=True, blank=True)
-    start_time = models.DateTimeField(_('开始时间'), null=True, blank=True)
-    end_time = models.DateTimeField(_('结束时间'), null=True, blank=True)
     operator = models.ForeignKey(
         User,
-        verbose_name=_('操作员'),
         on_delete=models.PROTECT,
-        related_name='operated_steps'
+        related_name='operated_stock_ins',
+        verbose_name='操作人'
     )
-    quality_check_result = models.TextField(_('质检结果'), blank=True)
-    notes = models.TextField(_('备注'), blank=True)
-    attachments = models.JSONField(
-        _('附件列表'),
-        default=list,
-        blank=True,
-        help_text=_('步骤相关的文件URL列表，如3D文件、图纸等')
-    )
-    created_at = models.DateTimeField(_('创建时间'), auto_now_add=True)
-    updated_at = models.DateTimeField(_('更新时间'), auto_now=True)
+    remark = models.TextField(blank=True, null=True, verbose_name='备注')
+    stock_in_time = models.DateTimeField(default=timezone.now, verbose_name='入库时间')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
     class Meta:
-        verbose_name = _('生产步骤')
-        verbose_name_plural = _('生产步骤')
-        ordering = ['order', 'sequence']
-        unique_together = ['order', 'sequence']
+        db_table = 'storage_stock_in'
+        verbose_name = '入库记录'
+        verbose_name_plural = '入库记录列表'
+        ordering = ['-stock_in_time']
 
     def __str__(self):
-        return f"{self.order.code} - {self.get_step_name_display()}"
+        return f"{self.stock_in_code} - {self.get_stock_in_type_display()}"
 
+class StockOut(models.Model):
+    """出库记录"""
+    STOCK_OUT_TYPE_CHOICES = [
+        ('sales', '销售出库'),
+        ('return', '退货出库'),
+        ('transfer', '调拨出库'),
+        ('other', '其他出库'),
+    ]
 
-class ProductionComment(models.Model):
-    """生产评论"""
-    COMMENT_TYPE_CHOICES = (
-        ('general', '普通评论'),
-        ('issue', '问题报告'),
-        ('solution', '解决方案'),
+    stock_out_code = models.CharField(max_length=50, unique=True, verbose_name='出库单号')
+    warehouse = models.ForeignKey(
+        Warehouse,
+        on_delete=models.PROTECT,
+        related_name='stock_outs',
+        verbose_name='出库仓库'
     )
-
-    order = models.ForeignKey(
-        ProductionOrder,
-        verbose_name=_('生产任务'),
-        on_delete=models.CASCADE,
-        related_name='comments'
+    product = models.ForeignKey(
+        'products.Product',
+        on_delete=models.PROTECT,
+        related_name='stock_outs',
+        verbose_name='商品'
     )
-    step = models.ForeignKey(
-        ProductionStep,
-        verbose_name=_('生产步骤'),
-        on_delete=models.CASCADE,
-        related_name='comments',
-        null=True,
-        blank=True
+    inventory = models.ForeignKey(
+        Inventory,
+        on_delete=models.PROTECT,
+        related_name='stock_outs',
+        verbose_name='库存批次'
     )
-    comment_type = models.CharField(
-        _('评论类型'),
+    stock_out_type = models.CharField(
         max_length=20,
-        choices=COMMENT_TYPE_CHOICES,
-        default='general'
+        choices=STOCK_OUT_TYPE_CHOICES,
+        verbose_name='出库类型'
     )
-    content = models.TextField(_('评论内容'))
-    images = models.JSONField(
-        _('图片列表'),
-        default=list,
-        blank=True,
-        help_text=_('评论相关的图片URL列表')
+    quantity = models.IntegerField(
+        validators=[MinValueValidator(1)],
+        verbose_name='出库数量'
     )
-    author = models.ForeignKey(
-        User,
-        verbose_name=_('评论人'),
-        on_delete=models.PROTECT,
-        related_name='production_comments'
-    )
-    parent = models.ForeignKey(
-        'self',
-        verbose_name=_('父评论'),
-        on_delete=models.CASCADE,
+    related_order = models.CharField(
+        max_length=50,
         null=True,
         blank=True,
-        related_name='replies'
+        verbose_name='关联单号'
     )
-    created_at = models.DateTimeField(_('创建时间'), auto_now_add=True)
-    updated_at = models.DateTimeField(_('更新时间'), auto_now=True)
+    operator = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='operated_stock_outs',
+        verbose_name='操作人'
+    )
+    remark = models.TextField(blank=True, null=True, verbose_name='备注')
+    stock_out_time = models.DateTimeField(default=timezone.now, verbose_name='出库时间')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
     class Meta:
-        verbose_name = _('生产评论')
-        verbose_name_plural = _('生产评论')
-        ordering = ['created_at']
+        db_table = 'storage_stock_out'
+        verbose_name = '出库记录'
+        verbose_name_plural = '出库记录列表'
+        ordering = ['-stock_out_time']
 
     def __str__(self):
-        return f"{self.order.code} - {self.author.username} - {self.created_at}" 
+        return f"{self.stock_out_code} - {self.get_stock_out_type_display()}" 

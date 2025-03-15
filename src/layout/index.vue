@@ -32,9 +32,10 @@
               <el-icon><Box /></el-icon>
               <span>库存管理</span>
             </template>
-            <el-menu-item index="/inventory/stock">库存查询</el-menu-item>
-            <el-menu-item index="/inventory/in">入库管理</el-menu-item>
-            <el-menu-item index="/inventory/out">出库管理</el-menu-item>
+            <el-menu-item index="/storage/warehouse">仓库管理</el-menu-item>
+            <el-menu-item index="/storage/inventory">库存查询</el-menu-item>
+            <el-menu-item index="/storage/stock-in">入库管理</el-menu-item>
+            <el-menu-item index="/storage/stock-out">出库管理</el-menu-item>
           </el-sub-menu>
           <el-sub-menu index="3">
             <template #title>

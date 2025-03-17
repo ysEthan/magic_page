@@ -260,7 +260,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Delete } from '@element-plus/icons-vue'
 import { 
   getOrderDetail,
@@ -268,7 +268,8 @@ import {
   updateOrder,
   getShopList,
   searchProducts
-} from '../../../api/trade'
+} from '@/api/trade'
+import { formatDateTime } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()

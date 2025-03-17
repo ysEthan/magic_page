@@ -8,7 +8,7 @@ RUN npm config set registry https://registry.npmmirror.com
 
 COPY package*.json ./
 
-RUN npm install
+RUN rm -rf node_modules .vite dist && npm install
 
 COPY . .
 

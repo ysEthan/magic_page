@@ -77,4 +77,13 @@ export function getOrderItemList(params) {
     method: 'get',
     params
   })
-} 
+}
+
+// 搜索商品
+export function searchProducts(query) {
+  return request({
+    url: '/api/trade/products/search/',
+    method: 'get',
+    params: { query }
+  })
+}

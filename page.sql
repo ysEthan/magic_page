@@ -2,7 +2,7 @@ cd /code/magic_page
 git clone https://github.com/ysEthan/magic_page.git
 
 cd /code/magic/magic_page
-git fetch origin && git checkout -b f06_production_step origin/f06_production_step
+git fetch origin && git checkout -b f07_procurement origin/f07_procurement
 
 
 
@@ -102,3 +102,11 @@ git add . && git commit -m "procurement" && git push
 
 接下来让我们继续实现库存管理模块。
 后端功能已经完成，,请参考一下API文档，模型文件，视图文件，序列化器文件实现前端功能，
+
+
+http://175.178.46.108/product/sku
+
+
+
+
+参考以下代码，创建同步采购单数据的函数

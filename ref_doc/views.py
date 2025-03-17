@@ -1,145 +1,182 @@
-from rest_framework import viewsets, status, filters
+from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.filters import SearchFilter, OrderingFilter
+from django_filters import rest_framework as filters
+from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
-from django.db.models import Sum, F
-from .models import Warehouse, Inventory, StockIn, StockOut
+
+from .models import Carrier, Service, Package, Tracking
 from .serializers import (
-    WarehouseSerializer, InventorySerializer,
-    StockInSerializer, StockOutSerializer
+    CarrierSerializer, ServiceSerializer,
+    PackageSerializer, TrackingSerializer
 )
 
 
-class WarehouseViewSet(viewsets.ModelViewSet):
-    """仓库管理视图集"""
-    queryset = Warehouse.objects.all()
-    serializer_class = WarehouseSerializer
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['status']
-    search_fields = ['warehouse_code', 'warehouse_name', 'location', 'contact_phone']
-    ordering_fields = ['warehouse_code', 'created_at']
+class CarrierFilter(filters.FilterSet):
+    """物流商过滤器"""
+    name = filters.CharFilter(field_name='name_zh', lookup_expr='icontains')
+    code = filters.CharFilter(lookup_expr='icontains')
+    contact = filters.CharFilter(lookup_expr='icontains')
+    created_at = filters.DateTimeFromToRangeFilter()
 
-    @action(detail=True, methods=['get'])
-    def inventory_summary(self, request, pk=None):
-        """获取仓库库存汇总信息"""
-        warehouse = self.get_object()
-        inventory_data = Inventory.objects.filter(
-            warehouse=warehouse
-        ).values(
-            'product'
-        ).annotate(
-            total_quantity=Sum('quantity'),
-            total_value=Sum(F('quantity') * F('unit_cost'))
-        )
-        return Response(inventory_data)
+    class Meta:
+        model = Carrier
+        fields = ['name', 'code', 'contact']
 
 
-class InventoryViewSet(viewsets.ModelViewSet):
-    """库存管理视图集"""
-    queryset = Inventory.objects.all()
-    serializer_class = InventorySerializer
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['warehouse', 'product']
-    search_fields = ['batch_code']
-    ordering_fields = ['created_at', 'quantity']
+class CarrierViewSet(viewsets.ModelViewSet):
+    """物流商视图集"""
+    queryset = Carrier.objects.all()
+    serializer_class = CarrierSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_class = CarrierFilter
+    filter_backends = [filters.DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ['name_zh', 'name_en', 'code', 'contact']
+    ordering_fields = ['name_zh', 'code', 'created_at']
+    ordering = ['name_zh']
 
-    @action(detail=False, methods=['get'])
-    def product_inventory(self, request):
-        """获取商品库存汇总"""
-        product_id = request.query_params.get('product_id')
-        if not product_id:
+
+class ServiceFilter(filters.FilterSet):
+    """物流服务过滤器"""
+    carrier = filters.NumberFilter()
+    carrier_name = filters.CharFilter(field_name='carrier__name_zh', lookup_expr='icontains')
+    service_name = filters.CharFilter(lookup_expr='icontains')
+    service_code = filters.CharFilter(lookup_expr='icontains')
+    service_type = filters.NumberFilter()
+    created_at = filters.DateTimeFromToRangeFilter()
+
+    class Meta:
+        model = Service
+        fields = ['carrier', 'carrier_name', 'service_name', 'service_code', 'service_type']
+
+
+class ServiceViewSet(viewsets.ModelViewSet):
+    """物流服务视图集"""
+    queryset = Service.objects.all()
+    serializer_class = ServiceSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_class = ServiceFilter
+    filter_backends = [filters.DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ['service_name', 'service_code', 'carrier__name_zh']
+    ordering_fields = ['carrier__name_zh', 'service_name', 'created_at']
+    ordering = ['carrier__name_zh', 'service_name']
+
+
+class PackageFilter(filters.FilterSet):
+    """包裹过滤器"""
+    order = filters.NumberFilter()
+    order_number = filters.CharFilter(field_name='order__order_number', lookup_expr='icontains')
+    warehouse = filters.NumberFilter()
+    warehouse_name = filters.CharFilter(field_name='warehouse__name', lookup_expr='icontains')
+    tracking_no = filters.CharFilter(lookup_expr='icontains')
+    pkg_status_code = filters.CharFilter()
+    service = filters.NumberFilter()
+    carrier = filters.NumberFilter(field_name='service__carrier')
+    carrier_name = filters.CharFilter(field_name='service__carrier__name_zh', lookup_expr='icontains')
+    created_at = filters.DateTimeFromToRangeFilter()
+    estimated_cost_min = filters.NumberFilter(field_name='estimated_logistics_cost', lookup_expr='gte')
+    estimated_cost_max = filters.NumberFilter(field_name='estimated_logistics_cost', lookup_expr='lte')
+
+    class Meta:
+        model = Package
+        fields = [
+            'order', 'order_number', 'warehouse', 'warehouse_name',
+            'tracking_no', 'pkg_status_code', 'service', 'carrier',
+            'carrier_name'
+        ]
+
+
+class PackageViewSet(viewsets.ModelViewSet):
+    """包裹视图集"""
+    queryset = Package.objects.all()
+    serializer_class = PackageSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_class = PackageFilter
+    filter_backends = [filters.DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ['tracking_no', 'order__order_number']
+    ordering_fields = ['created_at', 'estimated_logistics_cost']
+    ordering = ['-created_at']
+
+    @action(detail=True, methods=['post'])
+    def update_status(self, request, pk=None):
+        """更新包裹状态"""
+        package = self.get_object()
+        new_status = request.data.get('status')
+        description = request.data.get('description', '')
+        location = request.data.get('location', '')
+
+        if not new_status:
             return Response(
-                {"error": "必须提供product_id参数"},
+                {'error': _('状态不能为空')},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
-        inventory_data = Inventory.objects.filter(
-            product_id=product_id
-        ).values(
-            'warehouse'
-        ).annotate(
-            total_quantity=Sum('quantity')
-        )
-        return Response(inventory_data)
+
+        # 验证状态转换的合法性
+        valid_transitions = {
+            '0': ['1', '4'],  # 待发货 -> 待揽收/已取消
+            '1': ['2', '4'],  # 待揽收 -> 转运中/已取消
+            '2': ['3', '4'],  # 转运中 -> 已签收/已取消
+            '3': [],          # 已签收 -> 不可变更
+            '4': [],          # 已取消 -> 不可变更
+        }
+
+        if new_status not in valid_transitions.get(package.pkg_status_code, []):
+            return Response(
+                {'error': _('不允许的状态变更')},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 创建物流轨迹记录
+        tracking_data = {
+            'package': package,
+            'status': int(new_status),
+            'location': location,
+            'description': description,
+            'tracking_time': timezone.now(),
+            'operator': request.user
+        }
+        Tracking.objects.create(**tracking_data)
+
+        # 更新包裹状态
+        package.pkg_status_code = new_status
+        package.save()
+
+        return Response(self.get_serializer(package).data)
 
 
-class StockInViewSet(viewsets.ModelViewSet):
-    """入库管理视图集"""
-    queryset = StockIn.objects.all()
-    serializer_class = StockInSerializer
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['warehouse', 'product', 'stock_in_type']
-    search_fields = ['stock_in_code', 'source_order', 'remark']
-    ordering_fields = ['stock_in_time', 'created_at']
+class TrackingFilter(filters.FilterSet):
+    """物流轨迹过滤器"""
+    package = filters.NumberFilter()
+    tracking_no = filters.CharFilter(field_name='package__tracking_no', lookup_expr='icontains')
+    status = filters.NumberFilter()
+    location = filters.CharFilter(lookup_expr='icontains')
+    operator = filters.NumberFilter()
+    operator_name = filters.CharFilter(field_name='operator__username', lookup_expr='icontains')
+    tracking_time = filters.DateTimeFromToRangeFilter()
+    created_at = filters.DateTimeFromToRangeFilter()
 
-    def perform_create(self, serializer):
-        """创建入库记录时自动生成批次"""
-        # 生成入库单号
-        current_date = timezone.now()
-        prefix = f"IN{current_date.strftime('%y%m%d')}"
-        count = StockIn.objects.filter(
-            stock_in_code__startswith=prefix
-        ).count()
-        stock_in_code = f"{prefix}{str(count + 1).zfill(4)}"
-        
-        # 生成批次号
-        batch_prefix = f"B{current_date.strftime('%y%m%d')}"
-        batch_count = Inventory.objects.filter(
-            batch_code__startswith=batch_prefix
-        ).count()
-        batch_code = f"{batch_prefix}{str(batch_count + 1).zfill(4)}"
-        
-        # 创建库存记录
-        inventory = Inventory.objects.create(
-            warehouse=serializer.validated_data['warehouse'],
-            product=serializer.validated_data['product'],
-            batch_code=batch_code,
-            quantity=serializer.validated_data['quantity'],
-            unit_cost=serializer.validated_data['unit_cost']
-        )
-        
-        # 保存入库记录
-        serializer.save(
-            stock_in_code=stock_in_code,
-            inventory=inventory,
-            operator=self.request.user
-        )
+    class Meta:
+        model = Tracking
+        fields = ['package', 'tracking_no', 'status', 'location', 'operator', 'operator_name']
 
 
-class StockOutViewSet(viewsets.ModelViewSet):
-    """出库管理视图集"""
-    queryset = StockOut.objects.all()
-    serializer_class = StockOutSerializer
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['warehouse', 'product', 'stock_out_type']
-    search_fields = ['stock_out_code', 'related_order', 'remark']
-    ordering_fields = ['stock_out_time', 'created_at']
+class TrackingViewSet(viewsets.ModelViewSet):
+    """物流轨迹视图集"""
+    queryset = Tracking.objects.all()
+    serializer_class = TrackingSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_class = TrackingFilter
+    filter_backends = [filters.DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ['location', 'description', 'package__tracking_no']
+    ordering_fields = ['tracking_time', 'created_at']
+    ordering = ['-tracking_time']
 
-    def perform_create(self, serializer):
-        """创建出库记录时自动生成出库单号并更新库存"""
-        # 生成出库单号
-        current_date = timezone.now()
-        prefix = f"OUT{current_date.strftime('%y%m%d')}"
-        count = StockOut.objects.filter(
-            stock_out_code__startswith=prefix
-        ).count()
-        stock_out_code = f"{prefix}{str(count + 1).zfill(4)}"
-        
-        # 检查并更新库存
-        inventory = serializer.validated_data['inventory']
-        quantity = serializer.validated_data['quantity']
-        
-        if inventory.quantity < quantity:
-            raise serializers.ValidationError({
-                "quantity": f"库存不足，当前库存: {inventory.quantity}"
-            })
-        
-        inventory.quantity -= quantity
-        inventory.save()
-        
-        # 保存出库记录
-        serializer.save(
-            stock_out_code=stock_out_code,
-            operator=self.request.user
-        ) 
+    def get_queryset(self):
+        """根据包裹ID过滤轨迹记录"""
+        queryset = super().get_queryset()
+        package_id = self.request.query_params.get('package_id', None)
+        if package_id is not None:
+            queryset = queryset.filter(package_id=package_id)
+        return queryset 

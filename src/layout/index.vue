@@ -39,32 +39,42 @@
           </el-sub-menu>
           <el-sub-menu index="3">
             <template #title>
+              <el-icon><Box /></el-icon>
+              <span>生产管理</span>
+            </template>
+            <el-menu-item index="/production/orders">生产任务</el-menu-item>
+            <el-menu-item index="/production/reports">生产报表</el-menu-item>
+          </el-sub-menu>
+          <el-sub-menu index="4">
+            <template #title>
               <el-icon><ShoppingCart /></el-icon>
               <span>采购管理</span>
             </template>
             <el-menu-item index="/purchase/orders">采购订单</el-menu-item>
             <el-menu-item index="/purchase/suppliers">供应商管理</el-menu-item>
           </el-sub-menu>
-          <el-sub-menu index="4">
+          <el-sub-menu index="5">
             <template #title>
-              <el-icon><Sell /></el-icon>
+              <el-icon><ShoppingCart /></el-icon>
               <span>销售管理</span>
             </template>
-            <el-menu-item index="/sales/orders">销售订单</el-menu-item>
-            <el-menu-item index="/sales/customers">客户管理</el-menu-item>
+            <el-menu-item index="/trade/orders">销售订单</el-menu-item>
+            <el-menu-item index="/trade/customers">客户管理</el-menu-item>
+          </el-sub-menu>
+          <el-sub-menu index="6">
+            <template #title>
+              <el-icon><Van /></el-icon>
+              <span>物流管理</span>
+            </template>
+            <el-menu-item index="/logistics/carriers">物流商管理</el-menu-item>
+            <el-menu-item index="/logistics/services">物流服务</el-menu-item>
+            <el-menu-item index="/logistics/packages">包裹管理</el-menu-item>
+            <el-menu-item index="/logistics/tracking">物流轨迹</el-menu-item>
           </el-sub-menu>
           <el-menu-item index="/profile">
             <el-icon><User /></el-icon>
             <span>个人信息</span>
           </el-menu-item>
-          <el-sub-menu index="5">
-            <template #title>
-              <el-icon><Tools /></el-icon>
-              <span>生产管理</span>
-            </template>
-            <el-menu-item index="/production/orders">生产任务</el-menu-item>
-            <el-menu-item index="/production/reports">生产报表</el-menu-item>
-          </el-sub-menu>
         </el-menu>
       </el-aside>
       
@@ -116,7 +126,7 @@ import {
   Sell,
   Fold,
   Expand,
-  Tools
+  Van
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

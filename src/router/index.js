@@ -24,13 +24,13 @@ const router = createRouter({
           path: 'dashboard',
           name: 'Dashboard',
           component: () => import('@/views/dashboard/index.vue'),
-          meta: { title: '首页', icon: 'dashboard' }
+          meta: { title: '首页', icon: 'Monitor' }
         },
         {
           path: '/product',
           name: 'Product',
           redirect: '/product/brand',
-          meta: { title: '商品管理' },
+          meta: { title: '商品管理', icon: 'Goods' },
           children: [
             {
               path: 'brand',
@@ -62,13 +62,13 @@ const router = createRouter({
           path: 'profile',
           name: 'Profile',
           component: () => import('@/views/profile/index.vue'),
-          meta: { title: '个人信息', icon: 'user' }
+          meta: { title: '个人信息', icon: 'User' }
         },
         {
           path: '/production',
           name: 'Production',
           redirect: '/production/orders',
-          meta: { title: '生产管理' },
+          meta: { title: '生产管理', icon: 'Box' },
           children: [
             {
               path: 'orders',
@@ -95,7 +95,7 @@ const router = createRouter({
           component: () => import('@/layout/index.vue'),
           redirect: '/purchase/orders',
           name: 'Purchase',
-          meta: { title: '采购管理', icon: 'shopping-cart' },
+          meta: { title: '采购管理', icon: 'ShoppingCart' },
           children: [
             {
               path: 'suppliers',
@@ -116,7 +116,7 @@ const router = createRouter({
           component: () => import('@/layout/index.vue'),
           redirect: '/storage/warehouse',
           name: 'Storage',
-          meta: { title: '库存管理', icon: 'box' },
+          meta: { title: '库存管理', icon: 'Box' },
           children: [
             {
               path: 'warehouse',
@@ -143,7 +143,66 @@ const router = createRouter({
               meta: { title: '出库管理' }
             }
           ]
-        }     
+        },
+        {
+          path: '/trade',
+          component: () => import('@/layout/index.vue'),
+          redirect: '/trade/orders',
+          meta: { title: '销售管理', icon: 'ShoppingCart' },
+          children: [
+            {
+              path: 'orders',
+              name: 'Orders',
+              component: () => import('@/views/trade/orders.vue'),
+              meta: { title: '订单管理' }
+            },
+            {
+              path: 'orders/create',
+              name: 'CreateOrder',
+              component: () => import('@/views/trade/order-form.vue'),
+              meta: { title: '新建订单', activeMenu: '/trade/orders' },
+              hidden: true
+            },
+            {
+              path: 'orders/:id/edit',
+              name: 'EditOrder',
+              component: () => import('@/views/trade/order-form.vue'),
+              meta: { title: '编辑订单', activeMenu: '/trade/orders' },
+              hidden: true
+            }
+          ]
+        },
+        {
+          path: '/logistics',
+          component: () => import('@/layout/index.vue'),
+          meta: { title: '物流管理', icon: 'Van' },
+          children: [
+            {
+              path: 'carriers',
+              name: 'Carriers',
+              component: () => import('@/views/logistics/carriers.vue'),
+              meta: { title: '物流商管理' }
+            },
+            {
+              path: 'services',
+              name: 'Services',
+              component: () => import('@/views/logistics/services.vue'),
+              meta: { title: '物流服务' }
+            },
+            {
+              path: 'packages',
+              name: 'Packages',
+              component: () => import('@/views/logistics/packages.vue'),
+              meta: { title: '包裹管理' }
+            },
+            {
+              path: 'tracking',
+              name: 'Tracking',
+              component: () => import('@/views/logistics/tracking.vue'),
+              meta: { title: '物流轨迹' }
+            }
+          ]
+        }
       ]
     }
   ]

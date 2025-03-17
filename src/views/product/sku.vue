@@ -1,12 +1,7 @@
 <template>
   <div class="sku-container">
     <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>SKU管理</span>
-          <el-button type="primary" @click="handleAdd">新增SKU</el-button>
-        </div>
-      </template>
+
 
       <!-- 搜索区域 -->
       <el-form :inline="true" :model="queryParams" class="search-form">
@@ -18,50 +13,8 @@
             @keyup.enter="handleQuery"
           />
         </el-form-item>
-        <el-form-item label="所属SPU">
-          <el-select v-model="queryParams.spu" placeholder="请选择SPU" clearable>
-            <el-option
-              v-for="spu in spuOptions"
-              :key="spu.id"
-              :label="`${spu.code} - ${spu.name}`"
-              :value="spu.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="材质">
-          <el-input
-            v-model="queryParams.material"
-            placeholder="请输入材质"
-            clearable
-          />
-        </el-form-item>
-        <el-form-item label="颜色">
-          <el-input
-            v-model="queryParams.color"
-            placeholder="请输入颜色"
-            clearable
-          />
-        </el-form-item>
-        <el-form-item label="电镀工艺">
-          <el-select v-model="queryParams.plating_process" placeholder="请选择工艺" clearable>
-            <el-option
-              v-for="item in platingOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="审核状态">
-          <el-select v-model="queryParams.is_reviewed" placeholder="请选择状态" clearable>
-            <el-option label="已审核" :value="true" />
-            <el-option label="未审核" :value="false" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">查询</el-button>
-          <el-button @click="resetQuery">重置</el-button>
-        </el-form-item>
+
+
       </el-form>
 
       <!-- 表格区域 -->
@@ -81,7 +34,7 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column label="SKU信息" width="150">
+        <el-table-column label="SKU" width="150">
           <template #default="{ row }">
             <div class="sku-info">
               <div class="sku-code">{{ row.code }}</div>
@@ -89,7 +42,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="所属SPU" width="150">
+        <el-table-column label="SPU" width="150">
           <template #default="{ row }">
             <div class="spu-info">
               <div class="spu-code">{{ getSPUCode(row.spu) }}</div>
@@ -116,30 +69,9 @@
           </template>
         </el-table-column>
         <el-table-column prop="weight" label="重量(g)" width="100" />
-        <el-table-column prop="is_reviewed" label="审核状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="row.is_reviewed ? 'success' : 'warning'">
-              {{ row.is_reviewed ? '已审核' : '未审核' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="is_active" label="状态" width="80">
-          <template #default="{ row }">
-            <el-tag :type="row.is_active ? 'success' : 'info'">
-              {{ row.is_active ? '启用' : '禁用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
         <el-table-column label="操作" width="250" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleEdit(row)">编辑</el-button>
-            <el-button
-              :type="row.is_reviewed ? 'warning' : 'success'"
-              link
-              @click="handleReview(row)"
-            >
-              {{ row.is_reviewed ? '取消审核' : '审核' }}
-            </el-button>
             <el-button type="danger" link @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>

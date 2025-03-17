@@ -3,32 +3,38 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>采购订单</span>
+          <span>销售订单</span>
           <el-button type="primary" @click="handleAdd">新建订单</el-button>
         </div>
       </template>
 
       <!-- 搜索区域 -->
-      <el-form :inline="true" :model="queryParams" class="search-form" size="default">
+      <el-form :inline="true" :model="queryParams" class="search-form">
         <el-form-item label="订单编号">
           <el-input
-            v-model="queryParams.search"
+            v-model="queryParams.order_number"
             placeholder="请输入订单编号"
             clearable
-            style="width: 200px"
             @keyup.enter="handleQuery"
           />
         </el-form-item>
-        <el-form-item label="供应商">
+        <el-form-item label="平台订单号">
+          <el-input
+            v-model="queryParams.platform_order_number"
+            placeholder="请输入平台订单号"
+            clearable
+            @keyup.enter="handleQuery"
+          />
+        </el-form-item>
+        <el-form-item label="店铺">
           <el-select
-            v-model="queryParams.supplier"
-            placeholder="请选择供应商"
+            v-model="queryParams.shop"
+            placeholder="请选择店铺"
             clearable
             filterable
-            style="width: 200px"
           >
             <el-option
-              v-for="item in supplierOptions"
+              v-for="item in shopOptions"
               :key="item.id"
               :label="item.name"
               :value="item.id"
@@ -36,11 +42,10 @@
           </el-select>
         </el-form-item>
         <el-form-item label="订单状态">
-          <el-select 
-            v-model="queryParams.status" 
-            placeholder="请选择状态" 
+          <el-select
+            v-model="queryParams.status"
+            placeholder="请选择状态"
             clearable
-            style="width: 150px"
           >
             <el-option
               v-for="(label, value) in orderStatusOptions"
@@ -52,6 +57,20 @@
             </el-option>
           </el-select>
         </el-form-item>
+        <el-form-item label="订单类型">
+          <el-select
+            v-model="queryParams.order_type"
+            placeholder="请选择类型"
+            clearable
+          >
+            <el-option
+              v-for="(label, value) in orderTypeOptions"
+              :key="value"
+              :label="label"
+              :value="value"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="下单时间">
           <el-date-picker
             v-model="dateRange"
@@ -60,7 +79,6 @@
             start-placeholder="开始日期"
             end-placeholder="结束日期"
             value-format="YYYY-MM-DD"
-            style="width: 240px"
           />
         </el-form-item>
         <el-form-item>
@@ -79,54 +97,55 @@
         :data="orderList"
         style="width: 100%"
       >
+        <el-table-column type="selection" width="55" />
         <el-table-column prop="order_number" label="订单编号" width="150">
           <template #default="{ row }">
             <el-button 
               link 
               type="primary" 
-              @click="$router.push(`/purchase/orders/${row.id}`)"
+              @click="handleView(row)"
             >
               {{ row.order_number }}
             </el-button>
           </template>
         </el-table-column>
-        <el-table-column label="供应商信息" width="200">
+        <el-table-column prop="platform_order_number" label="平台订单号" width="150" />
+        <el-table-column label="店铺信息" width="180">
           <template #default="{ row }">
-            <div>{{ row.supplier_info?.name }}</div>
-            <div class="sub-text">{{ row.supplier_info?.contact_person }}</div>
-            <div class="sub-text">{{ row.supplier_info?.contact_phone }}</div>
+            <div>{{ row.shop_info?.name }}</div>
+            <div class="sub-text">{{ row.shop_info?.platform_display }}</div>
           </template>
         </el-table-column>
-        <el-table-column label="订单状态" width="120">
+        <el-table-column label="订单状态" width="100">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)">
               {{ row.status_display }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="total_amount" label="总金额" width="120">
+        <el-table-column label="支付状态" width="100">
           <template #default="{ row }">
-            ¥ {{ row.total_amount }}
+            <el-tag :type="row.payment_status ? 'success' : 'warning'">
+              {{ row.payment_status ? '已支付' : '未支付' }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="交付日期" width="240">
+        <el-table-column label="订单金额" width="150">
           <template #default="{ row }">
-            <div class="date-info">
-              <div>预计: {{ row.expected_delivery_date || '-' }}</div>
-              <div>实际: {{ row.actual_delivery_date || '-' }}</div>
-            </div>
+            <div>{{ row.currency }} {{ row.total_amount }}</div>
+            <div class="sub-text">运费：{{ row.shipping_fee }}</div>
           </template>
         </el-table-column>
-        <el-table-column label="采购员" width="120">
+        <el-table-column label="收货信息" width="200">
           <template #default="{ row }">
-            {{ row.purchaser_info?.last_name || row.purchaser_info?.username }}
+            <div>{{ row.shipping_contact }}</div>
+            <div class="sub-text">{{ row.shipping_phone }}</div>
+            <div class="sub-text">{{ row.shipping_address }}</div>
           </template>
         </el-table-column>
-        <el-table-column prop="tracking_number" label="物流单号" width="150" show-overflow-tooltip />
-        <el-table-column prop="remark" label="备注" min-width="200" show-overflow-tooltip />
-        <el-table-column label="创建时间" width="180">
+        <el-table-column label="下单时间" width="180">
           <template #default="{ row }">
-            {{ formatDateTime(row.created_at) }}
+            {{ formatDateTime(row.order_place_time) }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
@@ -142,6 +161,9 @@
                 <el-dropdown-menu>
                   <el-dropdown-item @click="handleUpdateStatus(row)">
                     <el-icon><SetUp /></el-icon>更新状态
+                  </el-dropdown-item>
+                  <el-dropdown-item @click="handleUpdatePayment(row)">
+                    <el-icon><Wallet /></el-icon>更新支付状态
                   </el-dropdown-item>
                   <el-dropdown-item divided @click="handleDelete(row)">
                     <el-icon><Delete /></el-icon>删除
@@ -194,43 +216,71 @@
         </span>
       </template>
     </el-dialog>
+
+    <!-- 支付状态更新对话框 -->
+    <el-dialog
+      v-model="paymentDialogVisible"
+      title="更新支付状态"
+      width="400px"
+    >
+      <el-form>
+        <el-form-item label="支付状态">
+          <el-switch
+            v-model="selectedPaymentStatus"
+            :active-text="selectedPaymentStatus ? '已支付' : '未支付'"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="paymentDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmUpdatePayment">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh, Edit, Delete, SetUp, CaretBottom } from '@element-plus/icons-vue'
-import { getOrderList, updateOrderStatus, deleteOrder } from '@/api/purchase'
-import { getSupplierList } from '@/api/purchase'
+import { Search, Refresh, Edit, Delete, SetUp, CaretBottom, Wallet } from '@element-plus/icons-vue'
+import { 
+  getOrderList, 
+  getShopList,
+  updateOrderStatus, 
+  updateOrderPayment,
+  deleteOrder 
+} from '@/api/trade'
 
 const router = useRouter()
 
 // 订单状态选项
 const orderStatusOptions = {
-  draft: '草稿',
-  pending_order: '待下单',
-  submitted: '已提交',
-  approved: '已审核',
-  pending_payment: '待支付',
-  processing: '处理中',
-  pending_storage: '待入库',
-  completed: '已完成',
+  unpaid: '未支付',
+  pending: '待处理',
+  picking: '配货中',
+  shipped: '已发货',
   cancelled: '已取消'
+}
+
+// 订单类型选项
+const orderTypeOptions = {
+  platform: '平台订单',
+  influencer: '达人订单',
+  offline: '线下订单',
+  requisition: '员工领用',
+  employee: '员工自购'
 }
 
 // 获取状态标签类型
 const getStatusType = (status) => {
   const types = {
-    draft: 'info',
-    pending_order: 'warning',
-    submitted: 'primary',
-    approved: 'success',
-    pending_payment: 'danger',
-    processing: 'primary',
-    pending_storage: 'warning',
-    completed: 'success',
+    unpaid: 'warning',
+    pending: 'info',
+    picking: 'primary',
+    shipped: 'success',
     cancelled: 'danger'
   }
   return types[status] || 'info'
@@ -238,11 +288,14 @@ const getStatusType = (status) => {
 
 // 查询参数
 const queryParams = reactive({
-  search: '',
-  supplier: '',
+  order_number: '',
+  platform_order_number: '',
+  shop: '',
   status: '',
-  min_order_time: '',
-  max_order_time: '',
+  order_type: '',
+  payment_status: '',
+  order_place_time_min: '',
+  order_place_time_max: '',
   page: 1,
   page_size: 10
 })
@@ -253,41 +306,25 @@ const dateRange = ref([])
 // 监听日期范围变化
 watch(dateRange, (val) => {
   if (val && val.length === 2) {
-    queryParams.min_order_time = val[0]
-    queryParams.max_order_time = val[1]
+    queryParams.order_place_time_min = val[0]
+    queryParams.order_place_time_max = val[1]
   } else {
-    queryParams.min_order_time = ''
-    queryParams.max_order_time = ''
+    queryParams.order_place_time_min = ''
+    queryParams.order_place_time_max = ''
   }
 })
 
-// 获取订单列表
+// 数据列表
 const loading = ref(false)
 const orderList = ref([])
 const total = ref(0)
-const supplierOptions = ref([])
+const shopOptions = ref([])
 
+// 获取订单列表
 const getList = async () => {
   loading.value = true
   try {
-    // 构建查询参数
-    const params = {
-      search: queryParams.search || '',
-      supplier: queryParams.supplier || '',
-      status: queryParams.status || '',
-      page: queryParams.page,
-      page_size: queryParams.page_size
-    }
-    
-    // 添加日期范围
-    if (queryParams.min_order_time) {
-      params.min_order_time = queryParams.min_order_time
-    }
-    if (queryParams.max_order_time) {
-      params.max_order_time = queryParams.max_order_time
-    }
-
-    const { results, count } = await getOrderList(params)
+    const { results, count } = await getOrderList(queryParams)
     orderList.value = results
     total.value = count
   } catch (error) {
@@ -298,14 +335,14 @@ const getList = async () => {
   }
 }
 
-// 获取供应商选项
-const getSupplierOptions = async () => {
+// 获取店铺选项
+const getShopOptions = async () => {
   try {
-    const { results } = await getSupplierList({ page_size: 1000 })
-    supplierOptions.value = results
+    const { results } = await getShopList({ status: 1 })
+    shopOptions.value = results
   } catch (error) {
-    console.error('获取供应商列表失败:', error)
-    ElMessage.error('获取供应商列表失败')
+    console.error('获取店铺列表失败:', error)
+    ElMessage.error('获取店铺列表失败')
   }
 }
 
@@ -317,37 +354,48 @@ const handleQuery = () => {
 
 // 重置查询
 const resetQuery = () => {
-  queryParams.search = ''
-  queryParams.supplier = ''
-  queryParams.status = ''
+  Object.assign(queryParams, {
+    order_number: '',
+    platform_order_number: '',
+    shop: '',
+    status: '',
+    order_type: '',
+    payment_status: '',
+    order_place_time_min: '',
+    order_place_time_max: '',
+    page: 1,
+    page_size: 10
+  })
   dateRange.value = []
-  queryParams.min_order_time = ''
-  queryParams.max_order_time = ''
   handleQuery()
+}
+
+// 查看订单
+const handleView = (row) => {
+  router.push(`/trade/orders/${row.id}`)
 }
 
 // 新增订单
 const handleAdd = () => {
-  // 暂时禁用跳转功能
-  ElMessage.info('功能开发中...')
-  // router.push('/purchase/orders/create')
+  router.push('/trade/orders/create')
 }
 
 // 编辑订单
 const handleEdit = (row) => {
-  // 暂时禁用跳转功能
-  ElMessage.info('功能开发中...')
-  // router.push(`/purchase/orders/${row.id}/edit`)
+  router.push(`/trade/orders/${row.id}/edit`)
 }
 
-// 更新状态
+// 状态更新相关
+const statusDialogVisible = ref(false)
+const selectedStatus = ref('')
+const currentRow = ref(null)
+
 const handleUpdateStatus = (row) => {
   currentRow.value = row
   selectedStatus.value = row.status
   statusDialogVisible.value = true
 }
 
-// 确认更新状态
 const confirmUpdateStatus = async () => {
   try {
     await updateOrderStatus(currentRow.value.id, { status: selectedStatus.value })
@@ -355,13 +403,38 @@ const confirmUpdateStatus = async () => {
     statusDialogVisible.value = false
     getList()
   } catch (error) {
+    console.error('更新状态失败:', error)
     ElMessage.error('状态更新失败')
+  }
+}
+
+// 支付状态更新相关
+const paymentDialogVisible = ref(false)
+const selectedPaymentStatus = ref(false)
+
+const handleUpdatePayment = (row) => {
+  currentRow.value = row
+  selectedPaymentStatus.value = row.payment_status
+  paymentDialogVisible.value = true
+}
+
+const confirmUpdatePayment = async () => {
+  try {
+    await updateOrderPayment(currentRow.value.id, { 
+      payment_status: selectedPaymentStatus.value 
+    })
+    ElMessage.success('支付状态更新成功')
+    paymentDialogVisible.value = false
+    getList()
+  } catch (error) {
+    console.error('更新支付状态失败:', error)
+    ElMessage.error('支付状态更新失败')
   }
 }
 
 // 删除订单
 const handleDelete = (row) => {
-  ElMessageBox.confirm('确认要删除该采购订单吗？', '提示', {
+  ElMessageBox.confirm('确认要删除该订单吗？', '提示', {
     type: 'warning'
   }).then(async () => {
     try {
@@ -369,6 +442,7 @@ const handleDelete = (row) => {
       ElMessage.success('删除成功')
       getList()
     } catch (error) {
+      console.error('删除订单失败:', error)
       ElMessage.error('删除失败')
     }
   })
@@ -388,19 +462,14 @@ const handleCurrentChange = (val) => {
 
 // 格式化日期时间
 const formatDateTime = (datetime) => {
-  if (!datetime) return ''
+  if (!datetime) return '-'
   const date = new Date(datetime)
   return date.toLocaleString()
 }
 
-// 状态更新相关
-const statusDialogVisible = ref(false)
-const selectedStatus = ref('')
-const currentRow = ref(null)
-
 onMounted(() => {
   getList()
-  getSupplierOptions()
+  getShopOptions()
 })
 </script>
 
@@ -426,16 +495,6 @@ onMounted(() => {
     font-size: 13px;
     color: #909399;
     line-height: 1.5;
-  }
-
-  .date-info {
-    line-height: 1.5;
-    
-    div {
-      &:first-child {
-        margin-bottom: 4px;
-      }
-    }
   }
 }
 </style> 

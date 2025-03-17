@@ -365,7 +365,7 @@ const handleSearchProduct = async (query) => {
   if (query) {
     productLoading.value = true
     try {
-      const { results } = await searchProducts({ search: query })
+      const { results } = await searchProducts({ query })
       productOptions.value = results
     } catch (error) {
       console.error('搜索商品失败:', error)

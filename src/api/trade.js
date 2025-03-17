@@ -80,10 +80,18 @@ export function getOrderItemList(params) {
 }
 
 // 搜索商品
-export function searchProducts(query) {
+export function searchProducts(params) {
   return request({
     url: '/api/trade/products/search/',
     method: 'get',
-    params: { query }
+    params
+  })
+}
+
+// 获取订单详情
+export function getOrderDetail(id) {
+  return request({
+    url: `/api/trade/orders/${id}/`,
+    method: 'get'
   })
 }

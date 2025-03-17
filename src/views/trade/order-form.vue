@@ -268,7 +268,7 @@ import {
   updateOrder,
   getShopList,
   searchProducts
-} from '@/api/trade'
+} from '../../../api/trade'
 
 const route = useRoute()
 const router = useRouter()

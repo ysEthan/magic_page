@@ -108,6 +108,12 @@ const router = createRouter({
               name: 'PurchaseOrders',
               component: () => import('@/views/purchase/orders.vue'),
               meta: { title: '采购订单' }
+            },
+            {
+              path: 'pending-stock',
+              name: 'PendingStock',
+              component: () => import('@/views/purchase/pending-stock.vue'),
+              meta: { title: '待入库明细' }
             }
           ]
         },

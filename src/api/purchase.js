@@ -102,4 +102,22 @@ export function deleteOrderItem(id) {
     url: `/api/purchase/order-items/${id}/`,
     method: 'delete'
   })
-} 
+}
+
+// 获取待入库列表
+export function getPendingStockList(params) {
+  return request({
+    url: '/api/purchase/pending-stock/',
+    method: 'get',
+    params
+  })
+}
+
+// 获取待入库明细列表
+export function getPendingStorageList(params) {
+  return request({
+    url: '/api/purchase/order-items/pending-storage/',
+    method: 'get',
+    params
+  })
+}

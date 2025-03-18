@@ -159,7 +159,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="生产主管" width="120">
+        <el-table-column label="生产跟单" width="120">
           <template #default="{ row }">
             <span>{{ row.manager_info?.last_name || row.manager_info?.username || '-' }}</span>
           </template>
@@ -309,10 +309,10 @@
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="生产主管" prop="manager">
+              <el-form-item label="生产跟单" prop="manager">
                 <el-select
                   v-model="orderForm.manager"
-                  placeholder="请选择主管"
+                  placeholder="请选择跟单"
                   filterable
                   style="width: 100%"
                 >

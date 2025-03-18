@@ -52,6 +52,7 @@
             </template>
             <el-menu-item index="/purchase/orders">采购订单</el-menu-item>
             <el-menu-item index="/purchase/suppliers">供应商管理</el-menu-item>
+            <el-menu-item index="/purchase/pending-stock">待入库明细</el-menu-item>
           </el-sub-menu>
           <el-sub-menu index="5">
             <template #title>

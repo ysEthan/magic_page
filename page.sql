@@ -113,3 +113,8 @@ git add . && git commit -m "procurement" && git push
 后端功能已经完成，,请参考一下API文档，模型文件，视图文件，序列化器文件实现前端功能，
 
 继续实现包裹管理页面
+
+
+"08 采购管理优化 ============================="git checkout -b f08_procurement
+
+git add . && git commit -m "procurement p" && git push

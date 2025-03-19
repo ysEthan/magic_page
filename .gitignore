@@ -31,5 +31,8 @@ coverage
 
 # Environment files
 .env
-.env.*
+.env.local
+.env.*.local
+
+# 但是保留示例文件
 !.env.example

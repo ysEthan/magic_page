@@ -21,8 +21,11 @@ RUN npm run build
 # Production stage
 FROM nginx:1.24.0-alpine
 
+# 使用阿里云镜像源
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
 # 安装基础工具
-RUN apk add --no-cache curl wget gettext
+RUN apk update && apk add --no-cache curl wget gettext
 
 # 创建必要的目录
 RUN mkdir -p /etc/nginx/conf.d

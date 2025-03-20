@@ -25,7 +25,7 @@ FROM nginx:1.24.0-alpine
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 # 安装基础工具
-RUN apk update && apk add --no-cache curl wget gettext
+RUN apk update && apk add --no-cache wget gettext
 
 # 创建必要的目录
 RUN mkdir -p /etc/nginx/conf.d
@@ -46,19 +46,11 @@ if [ ! -f /app/.env ]; then
     cp /app/.env.example /app/.env
 fi
 
-# 加载环境变量（不使用 export 命令）
-while IFS='=' read -r key value; do
-    # 忽略注释和空行
-    if [ -n "$key" ] && ! echo "$key" | grep -q "^#"; then
-        # 移除可能的引号
-        value=$(echo "$value" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
-        # 设置环境变量
-        eval "export $key=\"$value\""
-    fi
-done < /app/.env
+# 加载环境变量
+export $(cat /app/.env | grep "^VITE_" | xargs)
 
 # 使用环境变量替换nginx配置
-envsubst '${NGINX_SERVER_PORT} ${NGINX_SERVER_NAME} ${NGINX_API_PROXY_PASS} ${NGINX_CORS_ALLOW_ORIGIN} ${NGINX_CORS_ALLOW_METHODS} ${NGINX_CORS_ALLOW_HEADERS}' \
+envsubst '${VITE_API_BASE_URL}' \
     < /etc/nginx/templates/default.conf.template \
     > /etc/nginx/conf.d/default.conf
 

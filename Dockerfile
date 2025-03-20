@@ -25,40 +25,14 @@ FROM nginx:1.24.0-alpine
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 # 安装基础工具
-RUN apk update && apk add --no-cache wget gettext
+RUN apk update && apk add --no-cache wget
 
 # 创建必要的目录
 RUN mkdir -p /etc/nginx/conf.d
 
 # 复制构建产物和配置文件
 COPY --from=build-stage /app/dist /usr/share/nginx/html
-COPY ./nginx.conf /etc/nginx/templates/default.conf.template
-COPY .env.example /app/.env.example
-
-# 创建启动脚本
-COPY <<'EOF' /docker-entrypoint.sh
-#!/bin/sh
-set -e
-
-# 如果没有 .env 文件，使用 .env.example
-if [ ! -f /app/.env ]; then
-    echo "No .env file found, using .env.example as default"
-    cp /app/.env.example /app/.env
-fi
-
-# 加载环境变量
-export $(cat /app/.env | grep "^VITE_" | xargs)
-
-# 使用环境变量替换nginx配置
-envsubst '${VITE_API_BASE_URL}' \
-    < /etc/nginx/templates/default.conf.template \
-    > /etc/nginx/conf.d/default.conf
-
-# 启动nginx
-exec nginx -g 'daemon off;'
-EOF
-
-RUN chmod +x /docker-entrypoint.sh
+COPY ./nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
@@ -66,6 +40,6 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --quiet --tries=1 --spider http://localhost:80 || exit 1
 
-CMD ["/docker-entrypoint.sh"]
+CMD ["nginx", "-g", "daemon off;"]
 
  

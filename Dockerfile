@@ -27,8 +27,40 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 # 安装基础工具
 RUN apk update && apk add --no-cache wget
 
+# 清理默认配置
+RUN rm -rf /etc/nginx/conf.d/* /etc/nginx/nginx.conf
+
 # 创建必要的目录
 RUN mkdir -p /etc/nginx/conf.d
+
+# 创建主配置文件
+COPY <<'EOF' /etc/nginx/nginx.conf
+user  nginx;
+worker_processes  auto;
+
+error_log  /var/log/nginx/error.log notice;
+pid        /var/run/nginx.pid;
+
+events {
+    worker_connections  1024;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile        on;
+    keepalive_timeout  65;
+
+    include /etc/nginx/conf.d/*.conf;
+}
+EOF
 
 # 复制构建产物和配置文件
 COPY --from=build-stage /app/dist /usr/share/nginx/html

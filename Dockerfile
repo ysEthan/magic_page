@@ -46,8 +46,16 @@ if [ ! -f /app/.env ]; then
     cp /app/.env.example /app/.env
 fi
 
-# 加载环境变量
-export $(cat /app/.env | grep -v '^#' | xargs)
+# 加载环境变量（不使用 export 命令）
+while IFS='=' read -r key value; do
+    # 忽略注释和空行
+    if [ -n "$key" ] && ! echo "$key" | grep -q "^#"; then
+        # 移除可能的引号
+        value=$(echo "$value" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
+        # 设置环境变量
+        eval "export $key=\"$value\""
+    fi
+done < /app/.env
 
 # 使用环境变量替换nginx配置
 envsubst '${NGINX_SERVER_PORT} ${NGINX_SERVER_NAME} ${NGINX_API_PROXY_PASS} ${NGINX_CORS_ALLOW_ORIGIN} ${NGINX_CORS_ALLOW_METHODS} ${NGINX_CORS_ALLOW_HEADERS}' \
@@ -64,7 +72,7 @@ EXPOSE 80
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --quiet --tries=1 --spider http://localhost:${NGINX_SERVER_PORT} || exit 1
+    CMD wget --quiet --tries=1 --spider http://localhost:80 || exit 1
 
 CMD ["/docker-entrypoint.sh"]
 

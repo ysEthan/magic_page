@@ -2,7 +2,7 @@ cd /code/magic_page
 git clone https://github.com/ysEthan/magic_page.git
 
 cd /code/magic/magic_page
-git fetch origin && git checkout -b f07_procurement origin/f07_procurement
+git fetch origin && git checkout -b f08_procurement origin/f08_procurement
 
 
 
@@ -115,6 +115,7 @@ git add . && git commit -m "procurement" && git push
 继续实现包裹管理页面
 
 
-"08 采购管理优化 ============================="git checkout -b f08_procurement
+"08 采购管理优化 ============================="
+git checkout -b f08_procurement
 
 git add . && git commit -m "procurement p" && git push

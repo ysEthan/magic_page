@@ -73,131 +73,85 @@
     </el-card>
 
     <el-card class="table-container">
-      <el-table
-        v-loading="loading"
-        :data="pendingList"
-        border
-        style="width: 100%"
-      >
-        <el-table-column
-          prop="order_number"
-          label="采购单号"
-          min-width="120"
+      <el-collapse>
+        <el-collapse-item
+          v-for="group in groupedPendingList"
+          :key="group.order_number"
+          class="order-item"
         >
-          <template #default="{ row }">
-            <el-link type="primary" @click="viewOrder(row.order_id)">
-              {{ row.order_number }}
-            </el-link>
+          <template #title>
+            <div class="order-header">
+              <div class="header-left">
+                <el-link type="primary" @click.stop="viewOrder(group.items[0].order_id)">
+                  {{ group.order_number }}
+                </el-link>
+                <span class="supplier-name">{{ group.items[0].supplier_name }}</span>
+              </div>
+              <div class="header-center">
+                <span class="quantity-info">
+                  共 {{ group.items.length }} 个商品
+                </span>
+                <span class="total-info">
+                  总金额：¥{{ calculateOrderTotal(group.items) }}
+                </span>
+              </div>
+              <div class="header-right">
+                <span class="date-info">预计到货：{{ group.items[0].expected_date }}</span>
+              </div>
+            </div>
           </template>
-        </el-table-column>
-        <el-table-column
-          prop="supplier_name"
-          label="供应商"
-          min-width="120"
-        />
-        <el-table-column
-          label="商品图片"
-          width="80"
-          align="center"
-        >
-          <template #default="{ row }">
-            <el-image
-              v-if="row.product_image"
-              :src="row.product_image"
-              :preview-src-list="[row.product_image]"
-              fit="contain"
-              style="width: 50px; height: 50px"
+
+          <div class="items-list">
+            <div 
+              v-for="item in group.items" 
+              :key="item.id"
+              class="item-row"
             >
-              <template #error>
-                <div class="image-slot">
-                  <el-icon><Picture /></el-icon>
+              <div class="item-info">
+                <el-image
+                  v-if="item.product_image"
+                  :src="item.product_image"
+                  :preview-src-list="[item.product_image]"
+                  fit="contain"
+                  class="product-image"
+                >
+                  <template #error>
+                    <div class="image-slot">
+                      <el-icon><Picture /></el-icon>
+                    </div>
+                  </template>
+                </el-image>
+                <div class="product-info">
+                  <div class="sku">{{ item.sku }}</div>
+                  <div class="quantities">
+                    <span class="quantity-item">订购：{{ item.quantity || 0 }}</span>
+                    <span class="quantity-item">已入库：{{ item.received_quantity || 0 }}</span>
+                    <span class="quantity-item">待入库：{{ item.pending_quantity || 0 }}</span>
+                  </div>
                 </div>
-              </template>
-            </el-image>
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="sku"
-          label="产品编码"
-          min-width="120"
-        />
-        <el-table-column
-          prop="ordered_quantity"
-          label="订购数量"
-          min-width="100"
-          align="right"
-        />
-        <el-table-column
-          prop="received_quantity"
-          label="已入库数量"
-          min-width="100"
-          align="right"
-        />
-        <el-table-column
-          prop="pending_quantity"
-          label="待入库数量"
-          min-width="100"
-          align="right"
-        />
-        <el-table-column
-          prop="unit_price"
-          label="单价"
-          min-width="100"
-          align="right"
-        >
-          <template #default="{ row }">
-            ¥{{ row.unit_price }}
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="total_amount"
-          label="总金额"
-          min-width="100"
-          align="right"
-        >
-          <template #default="{ row }">
-            ¥{{ row.total_amount }}
-          </template>
-        </el-table-column>
-        <el-table-column
-          prop="expected_date"
-          label="预计到货日期"
-          min-width="120"
-        />
-        <el-table-column
-          label="状态"
-          min-width="100"
-        >
-          <template #default="{ row }">
-            <el-tag :type="row.status === 'pending' ? 'warning' : 'info'">
-              {{ row.status === 'pending' ? '待入库' : '部分入库' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column
-          label="操作"
-          width="150"
-          fixed="right"
-        >
-          <template #default="{ row }">
-            <el-button
-              v-if="row.pending_quantity > 0"
-              type="primary"
-              link
-              @click="handleStockIn(row)"
-            >
-              入库
-            </el-button>
-            <el-button
-              type="primary"
-              link
-              @click="viewOrder(row.order_id)"
-            >
-              查看订单
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+              </div>
+              <div class="item-price">
+                <div>¥{{ item.unit_price }}</div>
+                <div class="total-amount">¥{{ item.total_amount }}</div>
+              </div>
+              <div class="item-status">
+                <el-tag :type="item.status === 'pending' ? 'warning' : 'info'" size="small">
+                  {{ item.status === 'pending' ? '待入库' : '部分入库' }}
+                </el-tag>
+                <el-button
+                  v-if="item.pending_quantity > 0"
+                  type="primary"
+                  link
+                  size="small"
+                  @click="handleStockIn(item)"
+                >
+                  入库
+                </el-button>
+              </div>
+            </div>
+          </div>
+        </el-collapse-item>
+      </el-collapse>
 
       <div class="pagination-container">
         <el-pagination
@@ -281,8 +235,9 @@ const getList = async () => {
   loading.value = true
   try {
     const params = computedParams.value
-    console.log('查询参数:', params) // 添加日志
+    console.log('查询参数:', params)
     const { results, count } = await getPendingStorageList(params)
+    console.log('获取到的数据:', results)
     pendingList.value = results
     total.value = count
   } catch (error) {
@@ -332,6 +287,26 @@ const handleCurrentChange = (val) => {
   getList()
 }
 
+// 按采购单分组的数据
+const groupedPendingList = computed(() => {
+  const groups = {}
+  pendingList.value.forEach(item => {
+    if (!groups[item.order_number]) {
+      groups[item.order_number] = {
+        order_number: item.order_number,
+        items: []
+      }
+    }
+    groups[item.order_number].items.push(item)
+  })
+  return Object.values(groups)
+})
+
+// 计算采购单总金额
+const calculateOrderTotal = (items) => {
+  return items.reduce((total, item) => total + (Number(item.total_amount) || 0), 0).toFixed(2)
+}
+
 onMounted(() => {
   getSupplierOptions()
   getList()
@@ -343,15 +318,188 @@ onMounted(() => {
   .search-container {
     margin-bottom: 20px;
   }
-  
-  .table-container {
-    margin-bottom: 20px;
+
+  :deep(.el-collapse) {
+    --el-collapse-header-height: auto;
+    border: none;
+    background: transparent;
   }
 
-  .sub-text {
-    font-size: 12px;
-    color: #909399;
-    line-height: 1.5;
+  :deep(.el-collapse-item) {
+    margin-bottom: 16px;
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 4px;
+    background-color: var(--el-bg-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    .el-collapse-item__header {
+      padding: 12px 16px;
+      border-bottom: none;
+      background-color: var(--el-bg-color-page);
+      border-radius: 4px 4px 0 0;
+
+      &.is-active {
+        border-bottom: 1px solid var(--el-border-color-lighter);
+      }
+    }
+
+    .el-collapse-item__content {
+      padding: 8px;
+      background-color: #fff;
+      border-radius: 0 0 4px 4px;
+    }
+
+    .el-collapse-item__arrow {
+      margin-right: 8px;
+    }
+  }
+
+  .order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    gap: 24px;
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 200px;
+
+      .el-link {
+        font-size: 15px;
+        font-weight: 500;
+      }
+
+      .supplier-name {
+        color: #606266;
+        font-size: 14px;
+        background-color: var(--el-fill-color-light);
+        padding: 2px 8px;
+        border-radius: 2px;
+      }
+    }
+
+    .header-center {
+      flex: 1;
+      display: flex;
+      gap: 24px;
+      color: #606266;
+      font-size: 14px;
+
+      .quantity-info {
+        color: #909399;
+        background-color: var(--el-fill-color-lighter);
+        padding: 2px 8px;
+        border-radius: 2px;
+      }
+
+      .total-info {
+        font-weight: 500;
+        color: var(--el-color-primary);
+      }
+    }
+
+    .header-right {
+      min-width: 200px;
+      text-align: right;
+
+      .date-info {
+        color: #909399;
+        font-size: 13px;
+        background-color: var(--el-fill-color-lighter);
+        padding: 2px 8px;
+        border-radius: 2px;
+      }
+    }
+  }
+
+  .items-list {
+    display: flex;
+    flex-direction: column;
+    background-color: #fff;
+  }
+
+  .item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+    transition: background-color 0.2s;
+    
+    &:hover {
+      background-color: var(--el-fill-color-lighter);
+    }
+    
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .item-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+
+      .product-image {
+        width: 40px;
+        height: 40px;
+        border-radius: 4px;
+        border: 1px solid var(--el-border-color-lighter);
+        padding: 2px;
+      }
+
+      .product-info {
+        .sku {
+          font-weight: 500;
+          margin-bottom: 4px;
+          color: var(--el-text-color-primary);
+        }
+
+        .quantities {
+          display: flex;
+          gap: 12px;
+          color: #606266;
+          font-size: 13px;
+
+          .quantity-item {
+            background-color: var(--el-fill-color-lighter);
+            padding: 1px 6px;
+            border-radius: 2px;
+          }
+        }
+      }
+    }
+
+    .item-price {
+      text-align: right;
+      margin-right: 16px;
+      min-width: 90px;
+      padding: 2px 8px;
+      background-color: var(--el-fill-color-lighter);
+      border-radius: 4px;
+
+      .total-amount {
+        color: var(--el-color-primary);
+        font-size: 13px;
+        margin-top: 2px;
+        font-weight: 500;
+      }
+    }
+
+    .item-status {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+      min-width: 70px;
+    }
   }
 
   .pagination-container {

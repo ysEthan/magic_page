@@ -728,6 +728,69 @@ Authorization: Bearer <access_token>
   - total_price 字段为只读，由系统根据 quantity 和 unit_price 自动计算
   - 创建或更新订单明细时会自动更新订单的总金额 
 
+### 4. 待入库采购单明细
+#### 4.1 获取待入库采购单明细列表
+- **接口**: `/api/purchase/order-items/pending-storage/`
+- **方法**: `GET`
+- **权限**: 需要认证
+- **查询参数**:
+  - `order_number`: 采购单号（模糊匹配）
+  - `supplier`: 供应商ID
+  - `supplier_name`: 供应商名称（模糊匹配）
+  - `product`: 商品ID
+  - `product_name`: 商品名称（模糊匹配）
+  - `sku`: SKU编码（模糊匹配）
+  - `status`: 入库状态
+    - `pending`: 待入库
+    - `partial`: 部分入库
+  - `expected_date_start`: 预计到货日期开始
+  - `expected_date_end`: 预计到货日期结束
+  - `created_at_start`: 创建时间开始
+  - `created_at_end`: 创建时间结束
+  - `search`: 搜索关键词（搜索订单号、供应商名称、商品名称、SKU）
+  - `ordering`: 排序字段
+    - `expected_date`: 按预计到货日期排序
+    - `-expected_date`: 按预计到货日期倒序
+    - `created_at`: 按创建时间排序
+    - `-created_at`: 按创建时间倒序
+- **响应**:
+  ```json
+  {
+    "count": "integer",
+    "results": [
+      {
+        "id": "integer",
+        "order_id": "integer",
+        "order_number": "string",
+        "supplier_id": "integer",
+        "supplier_name": "string",
+        "product_id": "integer",
+        "product_name": "string",
+        "product_image": "string",
+        "sku": "string",
+        "ordered_quantity": "integer",
+        "received_quantity": "integer",
+        "pending_quantity": "integer",
+        "unit_price": "decimal",
+        "total_amount": "decimal",
+        "expected_date": "date",
+        "status": "string",
+        "created_at": "datetime",
+        "updated_at": "datetime"
+      }
+    ]
+  }
+  ```
+- **说明**:
+  - status 状态说明：
+    - `pending`: 待入库（received_quantity = 0）
+    - `partial`: 部分入库（0 < received_quantity < ordered_quantity）
+  - pending_quantity = ordered_quantity - received_quantity
+  - total_amount = ordered_quantity * unit_price
+  - product_image: 商品图片的完整访问URL，如果商品没有图片则为null
+  - 默认按预计到货日期升序排序
+  - 支持分页，默认每页1000条记录，可通过 page_size 参数调整（最大10000条）
+
 ## 五、订单管理模块 (Trade)
 
 ### 1. 店铺管理 (Shops)
@@ -1207,4 +1270,283 @@ Authorization: Bearer <access_token>
   - operator 为记录创建人，自动设置为当前登录用户
   - 支持按包裹ID过滤轨迹记录
   - 默认按轨迹时间倒序排序
+  
+## 七、库存管理模块 (Storage)
+
+### 1. 仓库管理 (Warehouses)
+#### 1.1 获取仓库列表
+- **接口**: `/api/storage/warehouses/`
+- **方法**: `GET`
+- **权限**: 需要认证
+- **查询参数**:
+  - `status`: 状态（1: 正常, 0: 停用）
+  - `search`: 搜索关键词（搜索仓库编号、名称、位置、联系电话）
+- **响应**:
+  ```json
+  {
+    "count": "integer",
+    "results": [
+      {
+        "id": "integer",
+        "warehouse_code": "string",
+        "warehouse_name": "string",
+        "location": "string",
+        "manager": "integer",
+        "manager_info": {
+          "id": "integer",
+          "username": "string",
+          "first_name": "string",
+          "last_name": "string"
+        },
+        "contact_phone": "string",
+        "remark": "string",
+        "status": "integer",
+        "created_at": "datetime",
+        "updated_at": "datetime"
+      }
+    ]
+  }
+  ```
+
+#### 1.2 获取仓库库存汇总
+- **接口**: `/api/storage/warehouses/{id}/inventory_summary/`
+- **方法**: `GET`
+- **权限**: 需要认证
+- **响应**:
+  ```json
+  [
+    {
+      "product": "integer",
+      "total_quantity": "integer",
+      "total_value": "decimal"
+    }
+  ]
+  ```
+- **说明**:
+  - total_quantity: 商品总库存数量
+  - total_value: 商品库存总价值（数量 * 单位成本）
+
+### 2. 库存管理 (Inventories)
+#### 2.1 获取库存列表
+- **接口**: `/api/storage/inventories/`
+- **方法**: `GET`
+- **权限**: 需要认证
+- **查询参数**:
+  - `warehouse`: 仓库ID
+  - `product`: 商品ID
+  - `search`: 搜索关键词（搜索批次号）
+- **响应**:
+  ```json
+  {
+    "count": "integer",
+    "results": [
+      {
+        "id": "integer",
+        "warehouse": "integer",
+        "warehouse_info": {
+          "id": "integer",
+          "warehouse_code": "string",
+          "warehouse_name": "string"
+        },
+        "product": "integer",
+        "product_info": {
+          "id": "integer",
+          "name": "string",
+          "code": "string"
+        },
+        "batch_code": "string",
+        "quantity": "integer",
+        "unit_cost": "decimal",
+        "created_at": "datetime",
+        "updated_at": "datetime"
+      }
+    ]
+  }
+  ```
+
+#### 2.2 获取商品库存汇总
+- **接口**: `/api/storage/inventories/product_inventory/`
+- **方法**: `GET`
+- **权限**: 需要认证
+- **查询参数**:
+  - `product_id`: 商品ID（必填）
+- **响应**:
+  ```json
+  [
+    {
+      "warehouse": "integer",
+      "total_quantity": "integer"
+    }
+  ]
+  ```
+- **说明**:
+  - 返回指定商品在各个仓库的库存数量汇总
+
+### 3. 入库管理 (Stock In)
+#### 3.1 获取入库记录列表
+- **接口**: `/api/storage/stock-ins/`
+- **方法**: `GET`
+- **权限**: 需要认证
+- **查询参数**:
+  - `warehouse`: 仓库ID
+  - `product`: 商品ID
+  - `stock_in_type`: 入库类型
+    - `purchase`: 采购入库
+    - `production`: 生产入库
+    - `return`: 退货入库
+    - `adjustment`: 库存调整
+  - `search`: 搜索关键词（搜索入库单号、来源单号、备注）
+- **响应**:
+  ```json
+  {
+    "count": "integer",
+    "results": [
+      {
+        "id": "integer",
+        "stock_in_code": "string",
+        "warehouse": "integer",
+        "warehouse_info": {
+          "id": "integer",
+          "warehouse_code": "string",
+          "warehouse_name": "string"
+        },
+        "product": "integer",
+        "product_info": {
+          "id": "integer",
+          "name": "string",
+          "code": "string"
+        },
+        "inventory": "integer",
+        "stock_in_type": "string",
+        "stock_in_type_display": "string",
+        "quantity": "integer",
+        "unit_cost": "decimal",
+        "source_order": "string",
+        "operator": "integer",
+        "operator_info": {
+          "id": "integer",
+          "username": "string",
+          "first_name": "string",
+          "last_name": "string"
+        },
+        "remark": "string",
+        "stock_in_time": "datetime",
+        "created_at": "datetime",
+        "updated_at": "datetime"
+      }
+    ]
+  }
+  ```
+
+### 4. 出库管理 (Stock Out)
+#### 4.1 获取出库记录列表
+- **接口**: `/api/storage/stock-outs/`
+- **方法**: `GET`
+- **权限**: 需要认证
+- **查询参数**:
+  - `warehouse`: 仓库ID
+  - `product`: 商品ID
+  - `stock_out_type`: 出库类型
+    - `sale`: 销售出库
+    - `production`: 生产领料
+    - `return`: 退货出库
+    - `adjustment`: 库存调整
+  - `search`: 搜索关键词（搜索出库单号、关联单号、备注）
+- **响应**:
+  ```json
+  {
+    "count": "integer",
+    "results": [
+      {
+        "id": "integer",
+        "stock_out_code": "string",
+        "warehouse": "integer",
+        "warehouse_info": {
+          "id": "integer",
+          "warehouse_code": "string",
+          "warehouse_name": "string"
+        },
+        "product": "integer",
+        "product_info": {
+          "id": "integer",
+          "name": "string",
+          "code": "string"
+        },
+        "inventory": "integer",
+        "stock_out_type": "string",
+        "stock_out_type_display": "string",
+        "quantity": "integer",
+        "related_order": "string",
+        "operator": "integer",
+        "operator_info": {
+          "id": "integer",
+          "username": "string",
+          "first_name": "string",
+          "last_name": "string"
+        },
+        "remark": "string",
+        "stock_out_time": "datetime",
+        "created_at": "datetime",
+        "updated_at": "datetime"
+      }
+    ]
+  }
+  ```
+
+### 5. 库存变化明细 (Inventory History)
+#### 5.1 获取库存变化明细列表
+- **接口**: `/api/storage/inventory-history/`
+- **方法**: `GET`
+- **权限**: 需要认证
+- **查询参数**:
+  - `warehouse`: 仓库ID
+  - `product`: 商品ID
+  - `operation_type`: 操作类型
+    - `stock_in`: 入库
+    - `stock_out`: 出库
+    - `adjustment`: 调整
+  - `source_type`: 来源类型
+    - `purchase`: 采购
+    - `sale`: 销售
+    - `production`: 生产
+    - `return`: 退货
+    - `adjustment`: 调整
+  - `start_date`: 开始日期
+  - `end_date`: 结束日期
+  - `search`: 搜索关键词（搜索商品名称、SKU、来源单号）
+- **响应**:
+  ```json
+  {
+    "count": "integer",
+    "results": [
+      {
+        "id": "integer",
+        "warehouse_id": "integer",
+        "warehouse_name": "string",
+        "product_id": "integer",
+        "product_name": "string",
+        "sku": "string",
+        "operation_type": "string",
+        "operation_type_display": "string",
+        "quantity": "integer",
+        "before_quantity": "integer",
+        "after_quantity": "integer",
+        "unit": "string",
+        "operator": "integer",
+        "operator_name": "string",
+        "operation_time": "datetime",
+        "remark": "string",
+        "source_type": "string",
+        "source_type_display": "string",
+        "source_id": "integer",
+        "source_number": "string"
+      }
+    ]
+  }
+  ```
+- **说明**:
+  - 默认按操作时间倒序排序
+  - 支持按操作时间、ID排序
+  - 返回完整的库存变化记录，包括变化前后的数量
+  - 包含操作人信息和来源单据信息
   

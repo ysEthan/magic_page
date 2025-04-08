@@ -119,3 +119,11 @@ git add . && git commit -m "procurement" && git push
 git checkout -b f08_procurement
 
 git add . && git commit -m "procurement p" && git push
+
+
+
+
+"09 增加库存动态功能 ============================="
+git checkout -b f09_inventory_change
+
+git add . && git commit -m "inventory_change" && git push
